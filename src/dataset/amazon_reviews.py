@@ -34,6 +34,15 @@ def _ascii_ratio(s: str) -> float:
     return sum(1 for ch in s if ord(ch) <= 255) / len(s)
 
 
+def _cat_to_stem(cat: str) -> str:
+    # Matches UCSD filename convention: spaces/punct -> underscores, "&" -> "and"
+    s = (cat or "").strip()
+    s = s.replace("&", "and")
+    s = re.sub(r"[^A-Za-z0-9]+", "_", s)
+    s = re.sub(r"_+", "_", s).strip("_")
+    return s
+
+
 @dataclass
 class AmazonReviews2023Subset:
     cache_root: Path
@@ -84,7 +93,10 @@ class AmazonReviews2023Subset:
 
         if self.asin_to_cat_small_path.exists():
             with open(self.asin_to_cat_small_path, "r", encoding="utf-8") as f:
-                asin_to_cat = {str(k): str(v) for k, v in json.load(f).items()}
+                raw = json.load(f)
+            asin_to_cat = {str(k): _cat_to_stem(str(v)) for k, v in raw.items()}
+
+
         else:
             if not self.asin2cat_path.exists():
                 raise FileNotFoundError(f"Missing {self.asin2cat_path}. Run scripts/setup_datasets.sh first.")
@@ -101,7 +113,7 @@ class AmazonReviews2023Subset:
             with open(self.asin2cat_path, "rb") as f:
                 for asin, cat in ijson.kvitems(f, ""):
                     if asin in remaining:
-                        asin_to_cat[str(asin)] = str(cat)
+                        asin_to_cat[str(asin)] = _cat_to_stem(str(cat))
                         remaining.remove(asin)
                         if not remaining:
                             break
