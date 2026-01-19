@@ -1,13 +1,11 @@
-from .popularity import PopularityBias
-from .redundancy import RedundancyBias
-from .genre import GenreBias
-from .exposure import ExposureConcentration
-from .cosrec_item_bias import CoSRecItemBias
+from .redial.popularity import PopularityBias
+from .redial.redundancy import RedundancyBias
+from .redial.genre import GenreBias
+from .redial.exposure import ExposureConcentration
 
 __all__ = [
     "PopularityBias",
     "RedundancyBias",
     "GenreBias",
     "ExposureConcentration",
-    "CoSRecItemBias",
 ]

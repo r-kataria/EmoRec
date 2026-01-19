@@ -1,4 +1,4 @@
-from .go_emotions import GoEmotions
-from .go_emotions_cosrec import GoEmotionsCoSRec
+from .redial.go_emotions import GoEmotions
+from .cosrec.go_emotions import GoEmotionsCoSRec
 
-__all__ = ["GoEmotions", "GoEmotionsCoSRec"]
+__all__ = ["GoEmotionsRedial", "GoEmotionsCoSRec"]

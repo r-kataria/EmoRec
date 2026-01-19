@@ -17,7 +17,7 @@ from dataset.redial import (
 )
 
 
-class GoEmotions:
+class GoEmotionsRedial:
     MODEL = "SamLowe/roberta-base-go_emotions"
 
     def __init__(

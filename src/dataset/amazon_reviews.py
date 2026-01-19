@@ -14,6 +14,8 @@ from dataset.cosrec import CoSRecDataset
 META_BASE_URL = "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/meta_categories/"
 REVIEW_BASE_URL = "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/review_categories/"
 
+ASIN2CATEGORY_URL = "https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023/resolve/main/asin2category.json"
+
 _WS_RE = re.compile(r"\s+")
 
 
