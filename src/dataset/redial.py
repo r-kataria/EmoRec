@@ -3,11 +3,11 @@ from __future__ import annotations
 import csv
 import json
 import re
-import subprocess
-import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Sequence
+
+from utils.ensure import require_dir, require_file
 
 MOVIE_TAG_RE = re.compile(r"@(\d+)")
 
@@ -17,12 +17,17 @@ def safe_id(s: str) -> str:
 
 
 def get_speaker(msg: Dict[str, Any], idx: int) -> str:
+    """
+    Best-effort speaker detection across common ReDial variants.
+    Falls back to alternating (Seeker, Recommender) by index.
+    """
     for key in ("sender", "role", "from", "author", "authorType"):
-        if key in msg and isinstance(msg[key], str):
-            v = msg[key].lower()
-            if "seek" in v or v in {"user", "customer", "client"}:
+        v = msg.get(key)
+        if isinstance(v, str):
+            lv = v.lower()
+            if "seek" in lv or lv in {"user", "customer", "client", "seeker"}:
                 return "Seeker"
-            if "recom" in v or v in {"agent", "system", "bot", "assistant"}:
+            if "recom" in lv or lv in {"agent", "system", "bot", "assistant", "recommender"}:
                 return "Recommender"
     return "Seeker" if (idx % 2 == 0) else "Recommender"
 
@@ -35,10 +40,11 @@ def replace_movie_tags_with_titles(text: str, mentions_map: Dict[str, str]) -> s
     def repl(m: re.Match) -> str:
         k = m.group(1)
         return mentions_map.get(k, m.group(0))
+
     return MOVIE_TAG_RE.sub(repl, text or "")
 
 
-@dataclass
+@dataclass(frozen=True)
 class ReDialConversation:
     dataset: "ReDialDataset"
     split: str
@@ -64,25 +70,31 @@ class ReDialConversation:
 
 class ReDialDataset:
     """
-    ReDial dataset download + streaming iterator.
+    Pure loader for ReDial.
 
-    Stores under:
-      <cache_root>/datasets/redial/{repo/, data/}
+    Expected layout (created by scripts/download_data.py):
+      <cache_root>/datasets/redial/data/train_data.jsonl
+      <cache_root>/datasets/redial/data/test_data.jsonl
+      <cache_root>/datasets/redial/data/movies_with_mentions.csv
     """
 
-    REPO_URL = "https://github.com/ReDialData/website"
-    BRANCH = "data"
-    ZIP_NAME = "redial_dataset.zip"
-
-    def __init__(self, cache_root: Path | str = "./cache", quiet_download: bool = True):
+    def __init__(self, cache_root: Path | str = "./cache"):
         self.cache_root = Path(cache_root)
-        self.root = self.cache_root / "datasets" / "redial"
-        self.repo_dir = self.root / "repo"
-        self.data_dir = self.root / "data"
-        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.root = require_dir(
+            self.cache_root / "datasets" / "redial",
+            hint="Run: python3 scripts/download_data.py",
+        )
+        self.data_dir = require_dir(
+            self.root / "data",
+            hint="Run: python3 scripts/download_data.py",
+        )
+
+        # Validate required files early
+        _ = require_file(self.path_for_split("train"), hint="Run: python3 scripts/download_data.py")
+        _ = require_file(self.path_for_split("test"), hint="Run: python3 scripts/download_data.py")
+        _ = require_file(self.mentions_csv_path(), hint="Run: python3 scripts/download_data.py")
 
         self._mentions_map: Optional[Dict[str, str]] = None
-        self._ensure_dataset(quiet=quiet_download)
 
     def path_for_split(self, split: str) -> Path:
         if split == "train":
@@ -97,7 +109,7 @@ class ReDialDataset:
     def movie_mentions_map(self) -> Dict[str, str]:
         if self._mentions_map is None:
             self._mentions_map = self._load_mentions_map(self.mentions_csv_path())
-        return self._mentions_map
+        return dict(self._mentions_map)
 
     def iter(
         self,
@@ -108,10 +120,11 @@ class ReDialDataset:
         bias=None,
     ) -> Iterator[ReDialConversation]:
         """
-        Streams JSONL line-by-line and yields ReDialConversation objects.
+        Streams JSONL and yields ReDialConversation objects.
         Attach caches by passing emotion=..., bias=...
         """
-        path = self.path_for_split(split)
+        path = require_file(self.path_for_split(split), hint="Run: python3 scripts/download_data.py")
+
         n = 0
         yielded = 0
         with open(path, "r", encoding="utf-8") as f:
@@ -122,18 +135,18 @@ class ReDialDataset:
                     n += 1
                     continue
 
-                conv = json.loads(ln)
-                cid = str(conv.get("conversationId", "")) or f"line_{n}"
-                msgs = conv.get("messages", []) or []
-                movie_mentions = conv.get("movieMentions", {}) or {}
-                movie_mentions = {str(k): str(v) for k, v in movie_mentions.items()}
+                obj = json.loads(ln)
+                cid = str(obj.get("conversationId", "")) or f"line_{n}"
+                msgs = obj.get("messages", []) or []
+                mentions = obj.get("movieMentions", {}) or {}
+                mentions = {str(k): str(v) for k, v in mentions.items()}
 
                 yield ReDialConversation(
                     dataset=self,
                     split=split,
                     conversation_id=cid,
-                    messages=msgs,
-                    movie_mentions=movie_mentions,
+                    messages=list(msgs) if isinstance(msgs, list) else [],
+                    movie_mentions=mentions,
                     emotion_cache=emotion,
                     bias_cache=bias,
                 )
@@ -143,45 +156,9 @@ class ReDialDataset:
                 if max_convos is not None and yielded >= max_convos:
                     return
 
-    def _ensure_dataset(self, quiet: bool) -> None:
-        train_p = self.data_dir / "train_data.jsonl"
-        test_p = self.data_dir / "test_data.jsonl"
-        csv_p = self.data_dir / "movies_with_mentions.csv"
-        if train_p.exists() and test_p.exists() and csv_p.exists():
-            return
-
-        self.root.mkdir(parents=True, exist_ok=True)
-
-        def run(cmd: List[str], cwd: Optional[Path] = None) -> None:
-            if quiet:
-                subprocess.check_call(
-                    cmd,
-                    cwd=str(cwd) if cwd else None,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            else:
-                subprocess.check_call(cmd, cwd=str(cwd) if cwd else None)
-
-        if not self.repo_dir.exists():
-            run(["git", "clone", self.REPO_URL, str(self.repo_dir)])
-
-        run(["git", "fetch", "--all"], cwd=self.repo_dir)
-        run(["git", "checkout", self.BRANCH], cwd=self.repo_dir)
-
-        zip_path = self.repo_dir / self.ZIP_NAME
-        if not zip_path.exists():
-            raise FileNotFoundError(f"Expected {zip_path} after checkout '{self.BRANCH}'")
-
-        with zipfile.ZipFile(str(zip_path), "r") as zf:
-            zf.extractall(str(self.data_dir))
-
-        for p in (train_p, test_p, csv_p):
-            if not p.exists():
-                raise FileNotFoundError(f"Missing expected dataset file: {p}")
-
     @staticmethod
     def _load_mentions_map(csv_path: Path) -> Dict[str, str]:
+        csv_path = require_file(csv_path)
         with open(csv_path, "r", encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
             if not reader.fieldnames:
@@ -193,7 +170,7 @@ class ReDialDataset:
                 for c in col_candidates:
                     if c.lower() in lower:
                         return lower[c.lower()]
-                raise KeyError(f"Could not find any of {col_candidates} in {reader.fieldnames}")
+                raise KeyError(f"Missing expected columns {col_candidates} in {reader.fieldnames}")
 
             id_col = pick(["movieid", "movie_id", "movieId", "movieID"])
             title_col = pick(["moviename", "movie_name", "title", "name", "movieTitle", "movie_title"])

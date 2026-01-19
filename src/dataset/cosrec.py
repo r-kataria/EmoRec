@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Set, Tuple
-from collections import defaultdict
 
+from utils.ensure import require_dir, require_file
 
 _ASIN_RE = re.compile(r"^[A-Z0-9]{10}$", re.IGNORECASE)
 
@@ -21,6 +21,7 @@ def _read_jsonl_single_key(path: Path) -> Iterator[Tuple[str, Any]]:
     CoSRec jsonl files store each record as a dict with a single key:
       { "<conversation_id>": <value> }
     """
+    path = require_file(path, hint="Run: python3 scripts/download_data.py")
     with open(path, "r", encoding="utf-8") as f:
         for ln in f:
             ln = ln.strip()
@@ -34,9 +35,6 @@ def _read_jsonl_single_key(path: Path) -> Iterator[Tuple[str, Any]]:
 
 
 def _parse_conversation_text(text: str) -> List[Dict[str, str]]:
-    """
-    "U: ...\nS: ...\nU: ..." -> [{"speaker":"U","text":...}, ...]
-    """
     turns: List[Dict[str, str]] = []
     for line in (text or "").splitlines():
         line = line.strip()
@@ -81,16 +79,14 @@ def _split_intent_id(intent_id: str) -> Tuple[str, int, int]:
 
 
 def _is_asin(doc_id: str) -> bool:
-    s = str(doc_id).strip()
-    return bool(_ASIN_RE.match(s))
+    return bool(_ASIN_RE.match(str(doc_id).strip()))
 
 
 def _is_msmarco(doc_id: str) -> bool:
-    s = str(doc_id).strip().lower()
-    return "msmarco" in s
+    return "msmarco" in str(doc_id).strip().lower()
 
 
-@dataclass
+@dataclass(frozen=True)
 class CoSRecConversation:
     dataset: "CoSRecDataset"
     partition: str
@@ -98,14 +94,12 @@ class CoSRecConversation:
     turns: List[Dict[str, str]]
 
 
-@dataclass
+@dataclass(frozen=True)
 class CoSRecCuratedEpisode:
     """
     Curated-only, item-grounded recommendation episode.
     For recommendation topics, CoSRec uses topic_id like:
       <intent_id>#<user_index>
-    Example qrels lines you showed:
-      CoSRec-Curated_1_3_0#0  0  B004OA2B22  2
     """
     dataset: "CoSRecDataset"
     conversation_id: str
@@ -143,36 +137,35 @@ class CoSRecCuratedEpisode:
 
 class CoSRecDataset:
     """
-    CoSRec dataset loader. Also loads qrels and splits them into:
-      - ASIN qrels (product recommendation)
-      - MS MARCO qrels (retrieval/search)
+    Pure loader for CoSRec (repo is expected to be already cloned).
 
-    This addresses qrels lines like:
-      CoSRec-Curated_1_2_0      0   msmarco_v2.1_doc_...    2
-      CoSRec-Curated_1_3_0#0    0   B004OA2B22              2
+    Expected layout (created by scripts/download_data.py):
+      <cache_root>/datasets/cosrec/dataset/...
     """
 
-    REPO_URL = "https://github.com/CAMEO-22/CoSRec"
-
-    def __init__(self, cache_root: Path | str = "./cache", quiet_download: bool = True):
+    def __init__(self, cache_root: Path | str = "./cache"):
         self.cache_root = Path(cache_root)
-        self.root = self.cache_root / "datasets" / "cosrec"
-        self.repo_dir = self.root / "repo"
-        self.dataset_dir = self.repo_dir / "dataset"
-        self.quiet = bool(quiet_download)
-        self._ensure_repo()
+        self.root = require_dir(
+            self.cache_root / "datasets" / "cosrec",
+            hint="Run: python3 scripts/download_data.py",
+        )
+        self.dataset_dir = require_dir(
+            self.root / "dataset",
+            hint="CoSRec clone should contain a 'dataset/' directory. Re-run: python3 scripts/download_data.py",
+        )
 
-        self._curated_intent_map: Optional[Dict[str, Dict[str, Any]]] = None
-        self._curated_conversations_index: Optional[Dict[str, CoSRecConversation]] = None
-
-        # qrels (all + split)
+        # qrels (loaded once)
         self._qrels_all: Optional[Dict[str, List[Tuple[str, int]]]] = None
         self._qrels_asin: Optional[Dict[str, List[Tuple[str, int]]]] = None
         self._qrels_msmarco: Optional[Dict[str, List[Tuple[str, int]]]] = None
         self._asin_doc_ids: Optional[Set[str]] = None
         self._msmarco_doc_ids: Optional[Set[str]] = None
 
-        self._load_qrels()  # load once on init
+        # curated indices (lazy)
+        self._curated_intent_map: Optional[Dict[str, Dict[str, Any]]] = None
+        self._curated_conversations_index: Optional[Dict[str, CoSRecConversation]] = None
+
+        self._load_qrels()
 
     # ---------- paths ----------
     def conversations_path(self, partition: str) -> Path:
@@ -184,23 +177,12 @@ class CoSRecDataset:
     def curated_qrels_path(self) -> Path:
         return self.dataset_dir / "curated" / "qrels.qrels"
 
-    # ---------- repo ----------
-    def _ensure_repo(self) -> None:
-        if self.repo_dir.exists() and self.dataset_dir.exists():
-            return
-        self.root.mkdir(parents=True, exist_ok=True)
-        cmd = ["git", "clone", self.REPO_URL, str(self.repo_dir)]
-        if self.quiet:
-            subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        else:
-            subprocess.check_call(cmd)
-        if not self.dataset_dir.exists():
-            raise FileNotFoundError(f"Expected dataset folder at: {self.dataset_dir}")
-
     # ---------- qrels ----------
     def _load_qrels(self) -> None:
         if self._qrels_all is not None:
             return
+
+        qrels_path = require_file(self.curated_qrels_path(), hint="Run: python3 scripts/download_data.py")
 
         q_all: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
         q_asin: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
@@ -208,7 +190,7 @@ class CoSRecDataset:
         asins: Set[str] = set()
         msm: Set[str] = set()
 
-        with open(self.curated_qrels_path(), "r", encoding="utf-8") as f:
+        with open(qrels_path, "r", encoding="utf-8") as f:
             for ln in f:
                 ln = ln.strip()
                 if not ln or ln.startswith("#"):
@@ -259,8 +241,9 @@ class CoSRecDataset:
 
     # ---------- conversations ----------
     def iter_conversations(self, partition: str = "raw") -> Iterator[CoSRecConversation]:
-        for conv_id, conv_text in _read_jsonl_single_key(self.conversations_path(partition)):
-            turns = _parse_conversation_text(conv_text)
+        p = require_file(self.conversations_path(partition), hint="Run: python3 scripts/download_data.py")
+        for conv_id, conv_text in _read_jsonl_single_key(p):
+            turns = _parse_conversation_text(str(conv_text))
             yield CoSRecConversation(self, partition, conv_id, turns)
 
     def _index_curated_conversations(self) -> Dict[str, CoSRecConversation]:
@@ -274,28 +257,30 @@ class CoSRecDataset:
 
     # ---------- curated intents ----------
     def _load_curated_intent_map(self) -> Dict[str, Dict[str, Any]]:
-        """
-        Map base_intent_id -> {type, query_variants, conversation_id, utterance_idx}
-        """
         if self._curated_intent_map is not None:
             return self._curated_intent_map
 
+        intents_p = require_file(self.curated_intents_path(), hint="Run: python3 scripts/download_data.py")
+
         m: Dict[str, Dict[str, Any]] = {}
-        for conv_id, blocks in _read_jsonl_single_key(self.curated_intents_path()):
+        for conv_id, blocks in _read_jsonl_single_key(intents_p):
             if not isinstance(blocks, list):
                 continue
             for blk in blocks:
                 if not isinstance(blk, dict):
                     continue
-                uidx = int(blk.get("utterance", -1))
+                try:
+                    uidx = int(blk.get("utterance", -1))
+                except Exception:
+                    uidx = -1
                 intents = blk.get("intents") or []
                 if not isinstance(intents, list):
                     continue
                 for it in intents:
                     if not isinstance(it, dict):
                         continue
-                    iid = str(it.get("id", ""))
-                    typ = str(it.get("type", ""))
+                    iid = str(it.get("id", "")).strip()
+                    typ = str(it.get("type", "")).strip()
                     qv = it.get("query_variants") or []
                     if not isinstance(qv, list):
                         qv = []
@@ -318,21 +303,14 @@ class CoSRecDataset:
         emotion=None,
         bias=None,
     ) -> Iterator[CoSRecCuratedEpisode]:
-        """
-        Curated-only, item-grounded episodes for recommendation intents.
-
-        - Uses only qrels entries whose doc_id is an ASIN (10-char alnum).
-        - Requires topic_id contains '#' (personalized rec topic)
-        - Requires at least one ASIN with rel >= min_relevance
-        - Requires next user message (so emotion is defined)
-        """
         intent_map = self._load_curated_intent_map()
         qrels_asin = self.qrels_asin()
         conv_index = self._index_curated_conversations()
 
         for topic_id, judgs in qrels_asin.items():
             if "#" not in topic_id:
-                continue  # recommendation topics include '#'
+                continue
+
             base_intent_id, user_index_str = topic_id.split("#", 1)
             try:
                 user_index = int(user_index_str)
@@ -347,7 +325,7 @@ class CoSRecDataset:
 
             good = [(d, r) for (d, r) in judgs if int(r) >= int(min_relevance)]
             if not good:
-                continue  # no items
+                continue
 
             conv_id, utterance_idx, _ = _split_intent_id(base_intent_id)
             conv_id = str(meta.get("conversation_id", conv_id))
