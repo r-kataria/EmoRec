@@ -52,6 +52,7 @@ def build_redial_biases(
     from dataset import MovieLens25M, ReDialDataset
     from bias import (
         ExposureConcentration,
+        EpisodePopularityBias,
         GenreBias,
         PopularityBias,
         RedundancyBias,
@@ -64,6 +65,7 @@ def build_redial_biases(
     ml = MovieLens25M(cache_root=cache_root)
 
     pop = PopularityBias(cache_root=cache_root, movielens=ml)
+    epi = EpisodePopularityBias(cache_root=cache_root, movielens=ml)
     red = RedundancyBias(cache_root=cache_root, movielens=ml)
     gen = GenreBias(cache_root=cache_root, movielens=ml)
     exp = ExposureConcentration(cache_root=cache_root, movielens=ml)
@@ -79,7 +81,14 @@ def build_redial_biases(
 
     for split in _normalize_splits(splits):
         if force:
-            for base_dir in [pop._base_dir(), red._base_dir(), gen._base_dir(), yd._base_dir(), stereo._base_dir()]:
+            for base_dir in [
+                pop._base_dir(),
+                epi._base_dir(),
+                red._base_dir(),
+                gen._base_dir(),
+                yd._base_dir(),
+                stereo._base_dir(),
+            ]:
                 split_dir = base_dir / split
                 if split_dir.exists():
                     shutil.rmtree(split_dir)
@@ -89,6 +98,13 @@ def build_redial_biases(
             split=split,
             max_new=max_new,
             progress_path=cache_root / f"bias_popularity_{split}.json",
+            every=every,
+        )
+        epi.build(
+            ds,
+            split=split,
+            max_new=max_new,
+            progress_path=cache_root / f"bias_episode_popularity_{split}.json",
             every=every,
         )
         red.build(
@@ -144,6 +160,7 @@ def build_cosrec_biases(
     from dataset import AmazonReviews2023Index, CoSRecDataset
     from bias import (
         ExposureConcentrationCoSRec,
+        EpisodePopularityBiasCoSRec,
         GenreBiasCoSRec,
         PopularityBiasCoSRec,
         RatingBiasCoSRec,
@@ -157,6 +174,7 @@ def build_cosrec_biases(
     amazon.ensure_index()
 
     pop = PopularityBiasCoSRec(cache_root=cache_root, amazon_index=amazon)
+    epi = EpisodePopularityBiasCoSRec(cache_root=cache_root, amazon_index=amazon)
     rating = RatingBiasCoSRec(cache_root=cache_root, amazon_index=amazon)
     genre = GenreBiasCoSRec(cache_root=cache_root, amazon_index=amazon)
     red = RedundancyBiasCoSRec(cache_root=cache_root)
@@ -172,6 +190,7 @@ def build_cosrec_biases(
     if force:
         for base_dir in [
             pop._base_dir(),
+            epi._base_dir(),
             rating._base_dir(),
             genre._base_dir(),
             red._base_dir(),
@@ -186,6 +205,14 @@ def build_cosrec_biases(
         min_relevance=min_relevance,
         max_new=max_new,
         progress_path=cache_root / "bias_popularity_cosrec.json",
+        every=every,
+    )
+    epi.build(
+        ds,
+        intent_type=intent_type,
+        min_relevance=min_relevance,
+        max_new=max_new,
+        progress_path=cache_root / "bias_episode_popularity_cosrec.json",
         every=every,
     )
     rating.build(

@@ -119,6 +119,43 @@ def build_cosrec_emotions(
     )
 
 
+def build_cosrec_turn_emotions(
+    cache_root: Path | str = "./cache",
+    device: str | int = "auto",
+    top_k: Optional[int | str] = 5,
+    truncation: bool = True,
+    max_length: Optional[int] = None,
+    batch_size: Optional[int] = None,
+    max_new: Optional[int] = None,
+    every: int = 25,
+    force: bool = False,
+) -> None:
+    from dataset import CoSRecDataset
+    from emotion.go_emotions_cosrec import GoEmotionsCoSRec
+
+    cache_root = Path(cache_root)
+    ds = CoSRecDataset(cache_root=cache_root)
+    emo = GoEmotionsCoSRec(
+        cache_root=cache_root,
+        device=_parse_device(device),
+        top_k=_parse_top_k(top_k),
+        truncation=truncation,
+        max_length=max_length,
+        batch_size=batch_size,
+    )
+
+    if force and emo._turn_base_dir().exists():
+        shutil.rmtree(emo._turn_base_dir())
+
+    emo.build_turns(
+        ds,
+        partition="curated",
+        max_new=max_new,
+        progress_path=cache_root / "emotion_progress_cosrec_turns.json",
+        every=every,
+    )
+
+
 def build_emotions(
     cache_root: Path | str = "./cache",
     dataset: str = "all",
@@ -133,6 +170,7 @@ def build_emotions(
     min_relevance: int = 1,
     max_new: Optional[int] = None,
     every: int = 200,
+    include_cosrec_turns: bool = True,
     force: bool = False,
 ) -> None:
     dataset = str(dataset or "all").strip().lower()
@@ -164,3 +202,15 @@ def build_emotions(
             every=25 if every is None else every,
             force=force,
         )
+        if include_cosrec_turns:
+            build_cosrec_turn_emotions(
+                cache_root=cache_root,
+                device=device,
+                top_k=top_k,
+                truncation=truncation,
+                max_length=max_length,
+                batch_size=batch_size,
+                max_new=max_new,
+                every=25 if every is None else every,
+                force=force,
+            )

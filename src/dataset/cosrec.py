@@ -111,7 +111,7 @@ class CoSRecRecEpisode:
     user_index: int
 
     utterance_idx: int
-    intent_type: str  # e.g. "recommendation", "product_details"
+    intent_type: str  # e.g. "recommendation"
     product: Optional[str]
 
     query_variants: List[str]
@@ -143,7 +143,7 @@ class CoSRecRecEpisode:
 
 class CoSRecDataset:
     """
-    Rec-only loader for CoSRec (curated partition).
+    Rec-only loader for CoSRec (curated partition, recommendation intent only).
 
     Expected layout (created by scripts/download_data.py):
       <cache_root>/datasets/cosrec/dataset/curated/intents.jsonl
@@ -151,8 +151,8 @@ class CoSRecDataset:
       <cache_root>/datasets/cosrec/dataset/curated/conversations.jsonl
     """
 
-    # Only keep these intent types. Everything else is ignored.
-    REC_INTENT_TYPES = {"recommendation", "product_details"}
+    # Only keep recommendation intents. Everything else is ignored.
+    REC_INTENT_TYPES = {"recommendation"}
 
     def __init__(self, cache_root: Path | str = "./cache"):
         self.cache_root = Path(cache_root)
@@ -196,6 +196,7 @@ class CoSRecDataset:
             return
 
         qrels_path = require_file(self.curated_qrels_path(), hint="Run: python3 scripts/download_data.py")
+        intent_map = self._load_curated_intent_map()
 
         q_asin: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
         asins: Set[str] = set()
@@ -213,6 +214,13 @@ class CoSRecDataset:
                 try:
                     rel = int(parts[3])
                 except Exception:
+                    continue
+
+                base_intent_id, _ = self._parse_topic_id(topic_id)
+                meta = intent_map.get(base_intent_id)
+                if not meta:
+                    continue
+                if meta.get("type") not in self.REC_INTENT_TYPES:
                     continue
 
                 if _is_asin(doc_id):
@@ -250,7 +258,7 @@ class CoSRecDataset:
     def _load_curated_intent_map(self) -> Dict[str, Dict[str, Any]]:
         """
         Map base_intent_id -> {type, query_variants, conversation_id, utterance_idx, product?}
-        REC ONLY: ignores "search" etc.
+        REC ONLY: ignores "search" and "product_details".
         """
         if self._curated_intent_map is not None:
             return self._curated_intent_map
@@ -325,7 +333,7 @@ class CoSRecDataset:
         require_next_user: bool = True,
     ) -> Iterator[CoSRecRecEpisode]:
         """
-        Yields curated, item-grounded episodes for recommendation/product_details intents.
+        Yields curated, item-grounded episodes for recommendation intents only.
 
         - Uses ONLY ASIN qrels
         - Uses ONLY curated intents with type in REC_INTENT_TYPES

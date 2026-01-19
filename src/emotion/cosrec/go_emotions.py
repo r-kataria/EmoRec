@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from dataset.cosrec import CoSRecRecEpisode, safe_id
+from dataset.cosrec import CoSRecConversation, CoSRecRecEpisode, safe_id
 from emotion.go_emotions_base import GoEmotionsBase
 
 
@@ -31,11 +31,20 @@ class GoEmotionsCoSRec(GoEmotionsBase):
     def _base_dir(self) -> Path:
         return self.cache_root / "emotion" / "go_emotions" / "cosrec" / self._top_dir() / "curated"
 
+    def _turn_base_dir(self) -> Path:
+        return self.cache_root / "emotion" / "go_emotions" / "cosrec" / self._top_dir() / "curated_turns"
+
     def _ep_path(self, ep: CoSRecRecEpisode) -> Path:
         return self._base_dir() / f"{safe_id(ep.topic_id)}.json"
 
+    def _conv_path(self, conv: CoSRecConversation) -> Path:
+        return self._turn_base_dir() / f"{safe_id(conv.conversation_id)}.json"
+
     def has(self, ep: CoSRecRecEpisode) -> bool:
         return self._ep_path(ep).exists()
+
+    def has_turns(self, conv: CoSRecConversation) -> bool:
+        return self._conv_path(conv).exists()
 
     def get(self, ep: CoSRecRecEpisode) -> Dict[str, Any]:
         p = self._ep_path(ep)
@@ -60,6 +69,47 @@ class GoEmotionsCoSRec(GoEmotionsBase):
             "top_k": self.top_k,
             "emotion": preds,
             "next_user_text": text,
+        }
+
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(rec, f, ensure_ascii=False)
+        return rec
+
+    def get_turns(self, conv: CoSRecConversation) -> Dict[str, Any]:
+        p = self._conv_path(conv)
+        if p.exists():
+            with open(p, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+        turns = conv.turns
+        user_texts = []
+        user_idxs = []
+        for i, t in enumerate(turns):
+            if t.get("speaker") != "U":
+                continue
+            user_idxs.append(i)
+            user_texts.append(self._coerce_text(t.get("text", "")))
+
+        preds = self._predict_texts(user_texts)
+        by_idx = {user_idxs[i]: preds[i] for i in range(len(user_idxs))}
+
+        rec = {
+            "dataset": "cosrec",
+            "partition": "curated",
+            "conversation_id": conv.conversation_id,
+            "created_at_unix": time.time(),
+            "model": self.MODEL,
+            "top_k": self.top_k,
+            "turns": [
+                {
+                    "turn_idx": i,
+                    "speaker": t.get("speaker"),
+                    "text": t.get("text", ""),
+                    "emotion": by_idx.get(i),
+                }
+                for i, t in enumerate(turns)
+            ],
         }
 
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -117,5 +167,53 @@ class GoEmotionsCoSRec(GoEmotionsBase):
 
         print(
             f"[emotion:cosrec] done processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+            flush=True,
+        )
+
+    def build_turns(
+        self,
+        ds,
+        partition: str = "curated",
+        max_new: Optional[int] = None,
+        progress_path: Optional[Path | str] = None,
+        every: int = 25,
+    ) -> None:
+        progress_p = Path(progress_path) if progress_path is not None else None
+        processed = 0
+        computed = 0
+        t0 = time.time()
+
+        for conv in ds.iter_conversations(partition):
+            processed += 1
+            if not self.has_turns(conv):
+                _ = self.get_turns(conv)
+                computed += 1
+                if max_new is not None and computed >= max_new:
+                    break
+
+            if every and (processed % every == 0):
+                if progress_p is not None:
+                    progress_p.parent.mkdir(parents=True, exist_ok=True)
+                    with open(progress_p, "w", encoding="utf-8") as f:
+                        json.dump(
+                            {
+                                "signal": "emotion",
+                                "dataset": "cosrec",
+                                "partition": partition,
+                                "scope": "all_user_turns",
+                                "processed_conversations": processed,
+                                "computed_new": computed,
+                                "elapsed_s": time.time() - t0,
+                            },
+                            f,
+                            ensure_ascii=False,
+                        )
+                print(
+                    f"[emotion:cosrec:turns] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+                    flush=True,
+                )
+
+        print(
+            f"[emotion:cosrec:turns] done processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
             flush=True,
         )

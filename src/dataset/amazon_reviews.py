@@ -8,7 +8,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from utils.ensure import require_dir, require_file
 from dataset.cosrec import CoSRecDataset
@@ -340,6 +340,7 @@ class AmazonReviews2023Index:
         self._sorted_ratings: Optional[list[float]] = None
         self._top10_threshold: Optional[int] = None
         self._category_baseline: Optional[Dict[str, float]] = None
+        self._category_popularity_bins: Dict[str, List[float]] = {}
 
     @staticmethod
     def _safe_int(value: Any, default: int = 0) -> int:
@@ -368,7 +369,13 @@ class AmazonReviews2023Index:
         if self.index_path.exists() and self.index_path.stat().st_size > 0:
             with open(self.index_path, "r", encoding="utf-8") as f:
                 raw = json.load(f)
-            self._index = {str(k): v for k, v in raw.items()}
+            filtered = {}
+            qrels_asins = set(self.subset.qrels_asins)
+            for k, v in raw.items():
+                sk = str(k)
+                if sk in qrels_asins and isinstance(v, dict):
+                    filtered[sk] = v
+            self._index = filtered
             return
 
         processed = self._processed_path()
@@ -489,3 +496,32 @@ class AmazonReviews2023Index:
                 total += 1
         self._category_baseline = {c: counts[c] / total for c in counts} if total else {}
         return dict(self._category_baseline)
+
+    def category_popularity_distribution(self, category: str, bins: int = 10) -> List[float]:
+        key = f"{category}::{int(bins)}"
+        cached = self._category_popularity_bins.get(key)
+        if cached is not None:
+            return list(cached)
+
+        self.ensure_index()
+        counts = [0] * int(bins)
+        for v in (self._index or {}).values():
+            cats = v.get("categories") or []
+            if not isinstance(cats, list) or category not in cats:
+                continue
+            num = self._safe_int(v.get("num_ratings"), 0)
+            pct = float(self.popularity_percentile(num))
+            if pct < 0:
+                idx = 0
+            elif pct >= 1:
+                idx = int(bins) - 1
+            else:
+                idx = int(pct * int(bins))
+                if idx >= int(bins):
+                    idx = int(bins) - 1
+            counts[idx] += 1
+
+        total = sum(counts)
+        dist = [c / total for c in counts] if total > 0 else []
+        self._category_popularity_bins[key] = list(dist)
+        return list(dist)

@@ -42,6 +42,7 @@ def main() -> None:
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--emotion-dataset", choices=["redial", "cosrec", "all"], default="all")
     parser.add_argument("--bias-dataset", choices=["redial", "cosrec", "all"], default="all")
+    parser.add_argument("--no-cosrec-turn-emotions", action="store_true")
     args = parser.parse_args()
 
     if args.all:
@@ -76,6 +77,7 @@ def main() -> None:
             min_relevance=args.min_relevance,
             max_new=args.max_new,
             every=args.every,
+            include_cosrec_turns=not args.no_cosrec_turn_emotions,
             force=args.force,
         )
 
