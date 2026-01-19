@@ -56,6 +56,7 @@ def build_redial_biases(
         PopularityBias,
         RedundancyBias,
         StereotypeBiasReDial,
+        YearDecadeBias,
     )
 
     cache_root = Path(cache_root)
@@ -66,6 +67,7 @@ def build_redial_biases(
     red = RedundancyBias(cache_root=cache_root, movielens=ml)
     gen = GenreBias(cache_root=cache_root, movielens=ml)
     exp = ExposureConcentration(cache_root=cache_root, movielens=ml)
+    yd = YearDecadeBias(cache_root=cache_root, movielens=ml)
     stereo = StereotypeBiasReDial(
         cache_root=cache_root,
         device=_parse_device(device),
@@ -77,7 +79,7 @@ def build_redial_biases(
 
     for split in _normalize_splits(splits):
         if force:
-            for base_dir in [pop._base_dir(), red._base_dir(), gen._base_dir(), stereo._base_dir()]:
+            for base_dir in [pop._base_dir(), red._base_dir(), gen._base_dir(), yd._base_dir(), stereo._base_dir()]:
                 split_dir = base_dir / split
                 if split_dir.exists():
                     shutil.rmtree(split_dir)
@@ -101,6 +103,13 @@ def build_redial_biases(
             split=split,
             max_new=max_new,
             progress_path=cache_root / f"bias_genre_{split}.json",
+            every=every,
+        )
+        yd.build(
+            ds,
+            split=split,
+            max_new=max_new,
+            progress_path=cache_root / f"bias_year_decade_{split}.json",
             every=every,
         )
         stereo.build(
@@ -155,7 +164,6 @@ def build_cosrec_biases(
     stereo = StereotypeBiasCoSRec(
         cache_root=cache_root,
         device=_parse_device(device),
-        top_k=_parse_top_k(top_k),
         truncation=truncation,
         max_length=max_length,
         batch_size=batch_size,
@@ -243,7 +251,6 @@ def build_biases(
         build_redial_biases(
             cache_root=cache_root,
             device=device,
-            top_k=top_k,
             truncation=truncation,
             max_length=max_length,
             batch_size=batch_size,

@@ -3,6 +3,7 @@ from .redial.redundancy import RedundancyBias
 from .redial.genre import GenreBias
 from .redial.exposure import ExposureConcentration
 from .redial.stereotype import StereotypeBiasReDial
+from .redial.year_decade import YearDecadeBias
 from .cosrec.exposure import ExposureConcentrationCoSRec
 from .cosrec.genre import GenreBiasCoSRec
 from .cosrec.popularity import PopularityBiasCoSRec
@@ -16,6 +17,7 @@ __all__ = [
     "GenreBias",
     "ExposureConcentration",
     "StereotypeBiasReDial",
+    "YearDecadeBias",
     "PopularityBiasCoSRec",
     "RedundancyBiasCoSRec",
     "GenreBiasCoSRec",

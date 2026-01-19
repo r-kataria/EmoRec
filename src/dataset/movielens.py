@@ -68,6 +68,7 @@ class MovieLens25M:
         self._title_to_ids: Dict[str, List[int]] = {}
         self._title_year_to_id: Dict[Tuple[str, int], int] = {}
         self._id_to_genres: Dict[int, List[str]] = {}
+        self._id_to_year: Dict[int, int] = {}
 
         self._counts_loaded = False
         self._rating_counts: Dict[int, int] = {}
@@ -76,6 +77,9 @@ class MovieLens25M:
 
         self._baseline_loaded = False
         self._genre_baseline: Dict[str, float] = {}
+        self._year_baseline_loaded = False
+        self._year_baseline: Dict[str, float] = {}
+        self._decade_baseline: Dict[str, float] = {}
 
     def movies_csv(self) -> Path:
         return self.root / "ml-25m" / "movies.csv"
@@ -91,6 +95,7 @@ class MovieLens25M:
         self._title_to_ids.clear()
         self._title_year_to_id.clear()
         self._id_to_genres.clear()
+        self._id_to_year.clear()
 
         p = require_file(self.movies_csv(), hint="Run: python3 scripts/download_data.py")
         with open(p, "r", encoding="utf-8", newline="") as f:
@@ -106,6 +111,7 @@ class MovieLens25M:
                 self._title_to_ids.setdefault(key, []).append(mid)
                 if year is not None:
                     self._title_year_to_id[(key, year)] = mid
+                    self._id_to_year[mid] = int(year)
 
                 self._id_to_genres[mid] = [g for g in genres if g and g != "(no genres listed)"]
 
@@ -114,6 +120,10 @@ class MovieLens25M:
     def genres(self, movie_id: int) -> List[str]:
         self._load_movies()
         return list(self._id_to_genres.get(int(movie_id), []))
+
+    def year_for_movie_id(self, movie_id: int) -> Optional[int]:
+        self._load_movies()
+        return self._id_to_year.get(int(movie_id))
 
     # ----------------- rating counts (derived cache) -----------------
     def ensure_rating_counts(self) -> None:
@@ -185,6 +195,54 @@ class MovieLens25M:
     def genre_baseline(self) -> Dict[str, float]:
         self.ensure_genre_baseline()
         return dict(self._genre_baseline)
+
+    # ----------------- year/decade baseline (derived cache) -----------------
+    def ensure_year_baseline(self) -> None:
+        if self._year_baseline_loaded:
+            return
+
+        path = self.root / "year_baseline.json"
+        if path.exists() and path.stat().st_size > 0:
+            with open(path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            self._year_baseline = {str(k): float(v) for k, v in (raw.get("year") or {}).items()}
+            self._decade_baseline = {str(k): float(v) for k, v in (raw.get("decade") or {}).items()}
+            self._year_baseline_loaded = True
+            return
+
+        self._load_movies()
+        year_counts = defaultdict(int)
+        decade_counts = defaultdict(int)
+        total_years = 0
+        total_decades = 0
+
+        for yr in self._id_to_year.values():
+            y = int(yr)
+            year_counts[str(y)] += 1
+            total_years += 1
+            d = f"{(y // 10) * 10}s"
+            decade_counts[d] += 1
+            total_decades += 1
+
+        self._year_baseline = {
+            k: year_counts[k] / total_years for k in year_counts
+        } if total_years else {}
+        self._decade_baseline = {
+            k: decade_counts[k] / total_decades for k in decade_counts
+        } if total_decades else {}
+
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"year": self._year_baseline, "decade": self._decade_baseline}, f, ensure_ascii=False)
+
+        self._year_baseline_loaded = True
+
+    def year_baseline(self) -> Dict[str, float]:
+        self.ensure_year_baseline()
+        return dict(self._year_baseline)
+
+    def decade_baseline(self) -> Dict[str, float]:
+        self.ensure_year_baseline()
+        return dict(self._decade_baseline)
 
     # ----------------- title mapping -----------------
     def map_title(self, title: str) -> Optional[int]:

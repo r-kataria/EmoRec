@@ -1,0 +1,207 @@
+== ReDial (train) conversation 1000 ==
+Legend: A=Seeker, B=Recommender
+
+A: Hello.
+emotion: neutral (0.96), approval (0.02), annoyance (0.01)
+
+B: I'm looking for some films my wife and I can stream online and watch this morning. What do you recommend?
+bias stereotype: LABEL_0 (0.98)
+bias popularity: none (no movie tags)
+bias genre: none (no movie tags)
+bias year/decade: none (no movie tags)
+bias redundancy: new=0 repeated=0
+
+A: Let's see. That all depends on what it is you're in the mood for. Any particular genre or time period?
+emotion: curiosity (0.61), neutral (0.45), confusion (0.13)
+
+B: No, not really. Just as long as it's a good mix of things.
+bias stereotype: LABEL_0 (0.82)
+bias popularity: none (no movie tags)
+bias genre: none (no movie tags)
+bias year/decade: none (no movie tags)
+bias redundancy: new=0 repeated=0
+
+A: Okay then. First up I have @174545 with NEve Campbell.
+emotion: neutral (0.91), approval (0.07), realization (0.01)
+
+B: The girl from @184951
+movies: @184951
+bias stereotype: LABEL_0 (0.61)
+bias popularity: mean_pct=1.00 head_top10=1.00 mean_count=16657.0
+bias genre: js=0.35 entropy=1.39 coverage=4
+bias year/decade: mean_year=1996.0 js_year=0.66 js_decade=0.52
+bias redundancy: new=1 repeated=0
+
+A: It's about  two high school girls who accuse a counselor of rape and seduce a cop. Pretty wild movie
+emotion: admiration (0.78), neutral (0.05), approval (0.05)
+
+B: :O
+bias stereotype: LABEL_0 (0.83)
+bias popularity: none (no movie tags)
+bias genre: none (no movie tags)
+bias year/decade: none (no movie tags)
+bias redundancy: new=0 repeated=0
+
+A: lol
+emotion: amusement (0.92), joy (0.08), neutral (0.02)
+
+B: I would also suggest @86245 . It's a sci-fi movie set in Johanesburg (sp) South Africa. An alien race arrives and they are treated rather cruelly.
+movies: @86245
+bias stereotype: LABEL_1 (0.84)
+bias popularity: mean_pct=1.00 head_top10=1.00 mean_count=17970.0
+bias genre: js=0.49 entropy=1.10 coverage=3
+bias year/decade: mean_year=2009.0 js_year=0.63 js_decade=0.42
+bias redundancy: new=1 repeated=0
+
+A: So far so good. :)
+emotion: admiration (0.94), approval (0.08), joy (0.02)
+
+B: Another sci-fi film is @161817 . It's less aliens and space craft and more a dystopian drama about the world after everyone has gone sterile.
+movies: @161817
+bias stereotype: LABEL_1 (0.96)
+bias popularity: mean_pct=0.99 head_top10=1.00 mean_count=15063.0
+bias genre: js=0.28 entropy=1.61 coverage=5
+bias year/decade: mean_year=2006.0 js_year=0.64 js_decade=0.42
+bias redundancy: new=1 repeated=0
+
+A: Clive Owen is in it.
+emotion: neutral (0.96), approval (0.02), realization (0.01)
+
+B: And for a bit of old school horror I'll suggest @161025 . It's an old Tales from the Crypt film
+movies: @161025
+bias stereotype: LABEL_1 (0.91)
+bias popularity: none (unmapped @161025)
+bias genre: none (no MovieLens mapping)
+bias year/decade: none (no MovieLens mapping)
+bias redundancy: new=0 repeated=0
+
+A: I loved that show! I hoped they'd do a remake, but never got around to it. :(
+emotion: love (0.72), disappointment (0.47), optimism (0.22)
+
+B: It was pretty hilarious, lol. The Crypt Keeper was hilarious.
+bias stereotype: LABEL_1 (0.92)
+bias popularity: none (no movie tags)
+bias genre: none (no movie tags)
+bias year/decade: none (no movie tags)
+bias redundancy: new=0 repeated=0
+
+A: Thanks for your help! Have a good morning!
+emotion: gratitude (0.98), caring (0.03), optimism (0.02)
+
+== CoSRec (curated) conversation CoSRec-Curated_10 ==
+Legend: A=User, B=System
+
+A: Hi, I'm looking to buy a product to satisfy my need for playing the mandolin.
+emotion: none (no rec episode)
+
+B: Ah, you're interested in playing the mandolin! That's great. What kind of experience do you have with playing musical instruments?
+bias stereotype (CoSRec-Curated_10_0_): LABEL_0 (0.94)
+bias popularity (CoSRec-Curated_10_0_): mean_pct=0.31 head_top10=0.00 mean_count=35.0
+bias rating (CoSRec-Curated_10_0_): mean_rating=4.20 mean_pct=0.41
+bias genre (CoSRec-Curated_10_0_): js=0.64 entropy=1.90 coverage=9
+bias redundancy (CoSRec-Curated_10_0_): new=46 repeated=0
+bias stereotype (CoSRec-Curated_10_0_): LABEL_0 (0.94)
+bias popularity (CoSRec-Curated_10_0_): mean_pct=0.27 head_top10=0.03 mean_count=42.9
+bias rating (CoSRec-Curated_10_0_): mean_rating=3.87 mean_pct=0.31
+bias genre (CoSRec-Curated_10_0_): js=0.65 entropy=1.90 coverage=11
+bias redundancy (CoSRec-Curated_10_0_): new=14 repeated=15
+bias stereotype (CoSRec-Curated_10_0_): LABEL_0 (0.94)
+bias popularity (CoSRec-Curated_10_0_): mean_pct=0.37 head_top10=0.05 mean_count=102.2
+bias rating (CoSRec-Curated_10_0_): mean_rating=4.15 mean_pct=0.38
+bias genre (CoSRec-Curated_10_0_): js=0.63 entropy=2.61 coverage=31
+bias redundancy (CoSRec-Curated_10_0_): new=25 repeated=16
+
+A: Actually, this is my first time trying out the mandolin. I've always been fascinated by its sound and want to learn how to play it.
+emotion (CoSRec-Curated_10_0_): desire (0.48), curiosity (0.29), excitement (0.17)
+emotion (CoSRec-Curated_10_0_): desire (0.48), curiosity (0.29), excitement (0.17)
+emotion (CoSRec-Curated_10_0_): desire (0.48), curiosity (0.29), excitement (0.17)
+
+B: Well, there are different types of mandolins available in the market. We have carved-top, flat-backed, and round-backed mandolins. Which one sounds interesting to you?
+bias stereotype (CoSRec-Curated_10_1_): LABEL_0 (0.98)
+bias popularity (CoSRec-Curated_10_1_): mean_pct=0.40 head_top10=0.06 mean_count=89.3
+bias rating (CoSRec-Curated_10_1_): mean_rating=4.29 mean_pct=0.47
+bias genre (CoSRec-Curated_10_1_): js=0.63 entropy=2.15 coverage=12
+bias redundancy (CoSRec-Curated_10_1_): new=9 repeated=8
+bias stereotype (CoSRec-Curated_10_1_): LABEL_0 (0.98)
+bias popularity (CoSRec-Curated_10_1_): mean_pct=0.47 head_top10=0.00 mean_count=125.2
+bias rating (CoSRec-Curated_10_1_): mean_rating=4.23 mean_pct=0.39
+bias genre (CoSRec-Curated_10_1_): js=0.64 entropy=1.83 coverage=12
+bias redundancy (CoSRec-Curated_10_1_): new=10 repeated=10
+bias stereotype (CoSRec-Curated_10_1_): LABEL_0 (0.98)
+bias popularity (CoSRec-Curated_10_1_): mean_pct=0.47 head_top10=0.06 mean_count=104.1
+bias rating (CoSRec-Curated_10_1_): mean_rating=4.02 mean_pct=0.32
+bias genre (CoSRec-Curated_10_1_): js=0.63 entropy=1.90 coverage=9
+bias redundancy (CoSRec-Curated_10_1_): new=1 repeated=16
+
+A: Hmm, I'm not sure. Can you tell me more about each type? What's the difference between them?
+emotion (CoSRec-Curated_10_1_): confusion (0.74), curiosity (0.54), neutral (0.10)
+emotion (CoSRec-Curated_10_1_): confusion (0.74), curiosity (0.54), neutral (0.10)
+emotion (CoSRec-Curated_10_1_): confusion (0.74), curiosity (0.54), neutral (0.10)
+
+B: Of course! Carved-top mandolins are known for their bright and punchy sound, often used in folk and bluegrass music. Flat-backed mandolins have a deeper, richer sound, commonly used in British, Irish, and Brazilian folk music. Round-backed mandolins have a unique sound, often associated with European classical music.
+bias: none (no rec episode)
+
+A: Wow, that's helpful to know. I think I'd like to learn more about the carved-top mandolin. What kind of features should I look for when buying one?
+emotion: none (no rec episode)
+
+B: When buying a carved-top mandolin, look for an instrument with a hand-carved top and back, made from high-quality tone woods. Also, consider the type of music you want to play and choose an instrument that suits your style.
+bias: none (no rec episode)
+
+A: That makes sense. Can you recommend any particular brand or model?
+emotion: none (no rec episode)
+
+B: We have an Eastman MD304 Mandolin A-style with Classic Finish that's highly recommended for its great sound and playability.
+bias stereotype (CoSRec-Curated_10_4_): LABEL_0 (0.88)
+bias popularity (CoSRec-Curated_10_4_): mean_pct=0.23 head_top10=0.00 mean_count=14.9
+bias rating (CoSRec-Curated_10_4_): mean_rating=3.95 mean_pct=0.31
+bias genre (CoSRec-Curated_10_4_): js=0.67 entropy=1.10 coverage=3
+bias redundancy (CoSRec-Curated_10_4_): new=5 repeated=21
+bias stereotype (CoSRec-Curated_10_4_): LABEL_0 (0.88)
+bias popularity (CoSRec-Curated_10_4_): mean_pct=0.32 head_top10=0.03 mean_count=51.4
+bias rating (CoSRec-Curated_10_4_): mean_rating=3.94 mean_pct=0.30
+bias genre (CoSRec-Curated_10_4_): js=0.65 entropy=1.74 coverage=10
+bias redundancy (CoSRec-Curated_10_4_): new=3 repeated=26
+bias stereotype (CoSRec-Curated_10_4_): LABEL_0 (0.88)
+bias popularity (CoSRec-Curated_10_4_): mean_pct=0.29 head_top10=0.03 mean_count=54.1
+bias rating (CoSRec-Curated_10_4_): mean_rating=4.02 mean_pct=0.32
+bias genre (CoSRec-Curated_10_4_): js=0.65 entropy=1.54 coverage=13
+bias redundancy (CoSRec-Curated_10_4_): new=10 repeated=25
+bias stereotype (CoSRec-Curated_10_4_): LABEL_0 (0.88)
+bias popularity (CoSRec-Curated_10_4_): mean_pct=0.24 head_top10=0.00 mean_count=16.1
+bias rating (CoSRec-Curated_10_4_): mean_rating=4.00 mean_pct=0.32
+bias genre (CoSRec-Curated_10_4_): js=0.66 entropy=1.31 coverage=7
+bias redundancy (CoSRec-Curated_10_4_): new=3 repeated=24
+bias stereotype (CoSRec-Curated_10_4_): LABEL_0 (0.88)
+bias popularity (CoSRec-Curated_10_4_): mean_pct=0.22 head_top10=0.00 mean_count=11.8
+bias rating (CoSRec-Curated_10_4_): mean_rating=3.85 mean_pct=0.29
+bias genre (CoSRec-Curated_10_4_): js=0.65 entropy=1.32 coverage=6
+bias redundancy (CoSRec-Curated_10_4_): new=1 repeated=16
+bias stereotype (CoSRec-Curated_10_4_): LABEL_0 (0.88)
+bias popularity (CoSRec-Curated_10_4_): mean_pct=0.33 head_top10=0.03 mean_count=55.0
+bias rating (CoSRec-Curated_10_4_): mean_rating=4.00 mean_pct=0.31
+bias genre (CoSRec-Curated_10_4_): js=0.65 entropy=1.46 coverage=6
+bias redundancy (CoSRec-Curated_10_4_): new=4 repeated=28
+
+A: I see! And what about the price? How much does it cost?
+emotion (CoSRec-Curated_10_4_): curiosity (0.60), neutral (0.33), confusion (0.14)
+emotion (CoSRec-Curated_10_4_): curiosity (0.60), neutral (0.33), confusion (0.14)
+emotion (CoSRec-Curated_10_4_): curiosity (0.60), neutral (0.33), confusion (0.14)
+emotion (CoSRec-Curated_10_4_): curiosity (0.60), neutral (0.33), confusion (0.14)
+emotion (CoSRec-Curated_10_4_): curiosity (0.60), neutral (0.33), confusion (0.14)
+emotion (CoSRec-Curated_10_4_): curiosity (0.60), neutral (0.33), confusion (0.14)
+
+B: The Eastman MD304 Mandolin A-style with Classic Finish is priced at $629. It's a great value considering its quality and features.
+bias: none (no rec episode)
+
+A: Okay, I think I'd like to try out that model. Can you tell me more about its sound and playability?
+emotion: none (no rec episode)
+
+B: The Eastman MD304 has a beautiful, hand-carved solid spruce top and bound solid maple back and sides, giving it a rich and balanced tone. It's also very easy to play, with a smooth neck and low action.
+bias: none (no rec episode)
+
+A: Sounds perfect! I think I'll go ahead and buy the Eastman MD304 Mandolin A-style with Classic Finish.
+emotion: none (no rec episode)
+
+B: Great choice! You won't regret it. The Eastman MD304 is a fantastic instrument that will bring you joy and satisfaction as you learn to play the mandolin.
+bias: none (no rec episode)
+
