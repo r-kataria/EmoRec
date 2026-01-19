@@ -5,41 +5,13 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dataset.redial import (
-    ReDialConversation,
-    ReDialDataset,
-    extract_movie_ids,
-    get_speaker,
-    replace_movie_tags_with_titles,
-    safe_id,
-)
-from emotion.go_emotions_base import GoEmotionsBase
+from dataset.redial import ReDialConversation, ReDialDataset, get_speaker, safe_id
+from bias.stereotype_base import StereotypeBiasBase
 
 
-class GoEmotionsReDial(GoEmotionsBase):
-    def __init__(
-        self,
-        cache_root: Path | str = "./cache",
-        device: Any = -1,
-        top_k: int = 5,
-        truncation: bool = True,
-        resolve_movie_titles: bool = True,
-        max_length: Optional[int] = None,
-        batch_size: Optional[int] = None,
-    ):
-        self.resolve_movie_titles = resolve_movie_titles
-        super().__init__(
-            cache_root=cache_root,
-            device=device,
-            top_k=top_k,
-            truncation=truncation,
-            max_length=max_length,
-            batch_size=batch_size,
-        )
-
+class StereotypeBiasReDial(StereotypeBiasBase):
     def _base_dir(self) -> Path:
-        mode = "titles" if self.resolve_movie_titles else "raw"
-        return self.cache_root / "emotion" / "go_emotions" / self._top_dir() / mode
+        return self.cache_root / "bias" / "stereotype" / "redial" / self._top_dir()
 
     def _conv_path(self, conv: ReDialConversation) -> Path:
         return self._base_dir() / conv.split / f"{safe_id(conv.conversation_id)}.json"
@@ -60,44 +32,40 @@ class GoEmotionsReDial(GoEmotionsBase):
         return record
 
     def _compute(self, conv: ReDialConversation) -> Dict[str, Any]:
-        ds: ReDialDataset = conv.dataset
-        mentions = dict(ds.movie_mentions_map())
-        mentions.update(conv.movie_mentions or {})
-
-        texts: List[str] = []
         speakers: List[str] = []
-        movie_ids: List[List[str]] = []
+        rec_texts: List[str] = []
+        rec_indices: List[int] = []
 
         for i, msg in enumerate(conv.messages):
+            speaker = get_speaker(msg, i)
+            speakers.append(speaker)
+            if speaker != "Recommender":
+                continue
             raw_text = msg.get("text", "") if isinstance(msg, dict) else ""
             text = self._coerce_text(raw_text)
-            speakers.append(get_speaker(msg, i))
-            movie_ids.append(extract_movie_ids(text))
-            texts.append(
-                replace_movie_tags_with_titles(text, mentions)
-                if self.resolve_movie_titles
-                else text
-            )
+            rec_texts.append(text)
+            rec_indices.append(i)
 
-        preds_topk = self._predict_texts(texts)
+        preds = self._predict_texts(rec_texts)
+        by_idx = {rec_indices[i]: preds[i] for i in range(len(rec_indices))}
 
         return {
             "dataset": "redial",
             "split": conv.split,
             "conversationId": conv.conversation_id,
             "model": self.MODEL,
+            "tokenizer": self.TOKENIZER,
             "top_k": self.top_k,
-            "resolve_movie_titles": self.resolve_movie_titles,
+            "target_speaker": "Recommender",
             "created_at_unix": time.time(),
             "turns": [
                 {
                     "msg_idx": i,
                     "message_id": f"{conv.split}:{conv.conversation_id}:{i}",
                     "speaker": speakers[i],
-                    "movie_ids": movie_ids[i],
-                    "emotion": preds_topk[i],
+                    "bias": by_idx.get(i),
                 }
-                for i in range(len(preds_topk))
+                for i in range(len(conv.messages))
             ],
         }
 
@@ -117,7 +85,7 @@ class GoEmotionsReDial(GoEmotionsBase):
         computed = 0
         t0 = time.time()
 
-        for conv in ds.iter(split=split, start=start, max_convos=max_convos, emotion=self):
+        for conv in ds.iter(split=split, start=start, max_convos=max_convos, bias=self):
             processed += 1
 
             if not self.has(conv):
@@ -131,8 +99,9 @@ class GoEmotionsReDial(GoEmotionsBase):
                 with open(progress_p, "w", encoding="utf-8") as f:
                     json.dump(
                         {
-                            "signal": "emotion",
+                            "bias": "stereotype",
                             "model": self.MODEL,
+                            "tokenizer": self.TOKENIZER,
                             "top_k": self.top_k,
                             "split": split,
                             "processed_conversations": processed,
@@ -142,4 +111,3 @@ class GoEmotionsReDial(GoEmotionsBase):
                         f,
                         ensure_ascii=False,
                     )
-

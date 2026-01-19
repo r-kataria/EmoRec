@@ -1,3 +1,4 @@
+# FILE: src/dataset/cosrec.py
 from __future__ import annotations
 
 import json
@@ -14,6 +15,10 @@ _ASIN_RE = re.compile(r"^[A-Z0-9]{10}$", re.IGNORECASE)
 
 def safe_id(s: str) -> str:
     return re.sub(r"[^a-zA-Z0-9._-]+", "_", str(s))[:240] or "unknown"
+
+
+def _is_asin(doc_id: str) -> bool:
+    return bool(_ASIN_RE.match(str(doc_id).strip()))
 
 
 def _read_jsonl_single_key(path: Path) -> Iterator[Tuple[str, Any]]:
@@ -35,6 +40,9 @@ def _read_jsonl_single_key(path: Path) -> Iterator[Tuple[str, Any]]:
 
 
 def _parse_conversation_text(text: str) -> List[Dict[str, str]]:
+    """
+    "U: ...\nS: ...\nU: ..." -> [{"speaker":"U","text":...}, ...]
+    """
     turns: List[Dict[str, str]] = []
     for line in (text or "").splitlines():
         line = line.strip()
@@ -72,18 +80,10 @@ def _next_turn_index(turns: List[Dict[str, str]], start: int, speaker: str) -> O
 def _split_intent_id(intent_id: str) -> Tuple[str, int, int]:
     """
     Curated intent id format: <conversation_id>_<utterance_id>_<index>
-    Example: CoSRec-Curated_1_3_0
+    Example: CoSRec-Curated_12_2_1
     """
     conv_id, u_str, i_str = str(intent_id).rsplit("_", 2)
     return conv_id, int(u_str), int(i_str)
-
-
-def _is_asin(doc_id: str) -> bool:
-    return bool(_ASIN_RE.match(str(doc_id).strip()))
-
-
-def _is_msmarco(doc_id: str) -> bool:
-    return "msmarco" in str(doc_id).strip().lower()
 
 
 @dataclass(frozen=True)
@@ -95,21 +95,27 @@ class CoSRecConversation:
 
 
 @dataclass(frozen=True)
-class CoSRecCuratedEpisode:
+class CoSRecRecEpisode:
     """
-    Curated-only, item-grounded recommendation episode.
-    For recommendation topics, CoSRec uses topic_id like:
-      <intent_id>#<user_index>
+    Curated-only, item-grounded (ASIN) recommendation episode.
+
+    - topic_id comes from qrels (may include "#<user_index>" OR may be base intent id)
+    - base_intent_id maps into intents.jsonl to recover:
+        intent_type, utterance_idx, query_variants, product (optional)
     """
     dataset: "CoSRecDataset"
+
     conversation_id: str
     topic_id: str
     base_intent_id: str
     user_index: int
+
     utterance_idx: int
-    intent_type: str
+    intent_type: str  # e.g. "recommendation", "product_details"
+    product: Optional[str]
+
     query_variants: List[str]
-    qrels: List[Tuple[str, int]]  # ASIN-only qrels for this episode
+    qrels: List[Tuple[str, int]]  # (ASIN, relevance)
 
     user_turn_idx: int
     system_turn_idx: int
@@ -137,11 +143,16 @@ class CoSRecCuratedEpisode:
 
 class CoSRecDataset:
     """
-    Pure loader for CoSRec (repo is expected to be already cloned).
+    Rec-only loader for CoSRec (curated partition).
 
     Expected layout (created by scripts/download_data.py):
-      <cache_root>/datasets/cosrec/dataset/...
+      <cache_root>/datasets/cosrec/dataset/curated/intents.jsonl
+      <cache_root>/datasets/cosrec/dataset/curated/qrels.qrels
+      <cache_root>/datasets/cosrec/dataset/curated/conversations.jsonl
     """
+
+    # Only keep these intent types. Everything else is ignored.
+    REC_INTENT_TYPES = {"recommendation", "product_details"}
 
     def __init__(self, cache_root: Path | str = "./cache"):
         self.cache_root = Path(cache_root)
@@ -151,21 +162,23 @@ class CoSRecDataset:
         )
         self.dataset_dir = require_dir(
             self.root / "dataset",
-            hint="CoSRec clone should contain a 'dataset/' directory. Re-run: python3 scripts/download_data.py",
+            hint="CoSRec clone should contain 'dataset/'. Re-run: python3 scripts/download_data.py",
         )
 
-        # qrels (loaded once)
-        self._qrels_all: Optional[Dict[str, List[Tuple[str, int]]]] = None
+        # Validate core files exist early
+        _ = require_file(self.curated_intents_path(), hint="Run: python3 scripts/download_data.py")
+        _ = require_file(self.curated_qrels_path(), hint="Run: python3 scripts/download_data.py")
+        _ = require_file(self.conversations_path("curated"), hint="Run: python3 scripts/download_data.py")
+
+        # qrels (ASIN only)
         self._qrels_asin: Optional[Dict[str, List[Tuple[str, int]]]] = None
-        self._qrels_msmarco: Optional[Dict[str, List[Tuple[str, int]]]] = None
         self._asin_doc_ids: Optional[Set[str]] = None
-        self._msmarco_doc_ids: Optional[Set[str]] = None
 
         # curated indices (lazy)
         self._curated_intent_map: Optional[Dict[str, Dict[str, Any]]] = None
         self._curated_conversations_index: Optional[Dict[str, CoSRecConversation]] = None
 
-        self._load_qrels()
+        self._load_qrels_asin()
 
     # ---------- paths ----------
     def conversations_path(self, partition: str) -> Path:
@@ -177,18 +190,15 @@ class CoSRecDataset:
     def curated_qrels_path(self) -> Path:
         return self.dataset_dir / "curated" / "qrels.qrels"
 
-    # ---------- qrels ----------
-    def _load_qrels(self) -> None:
-        if self._qrels_all is not None:
+    # ---------- qrels (ASIN only) ----------
+    def _load_qrels_asin(self) -> None:
+        if self._qrels_asin is not None:
             return
 
         qrels_path = require_file(self.curated_qrels_path(), hint="Run: python3 scripts/download_data.py")
 
-        q_all: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
         q_asin: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
-        q_msm: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
         asins: Set[str] = set()
-        msm: Set[str] = set()
 
         with open(qrels_path, "r", encoding="utf-8") as f:
             for ln in f:
@@ -205,42 +215,23 @@ class CoSRecDataset:
                 except Exception:
                     continue
 
-                q_all[topic_id].append((doc_id, rel))
                 if _is_asin(doc_id):
                     q_asin[topic_id].append((doc_id, rel))
                     asins.add(doc_id)
-                elif _is_msmarco(doc_id):
-                    q_msm[topic_id].append((doc_id, rel))
-                    msm.add(doc_id)
 
-        self._qrels_all = dict(q_all)
         self._qrels_asin = dict(q_asin)
-        self._qrels_msmarco = dict(q_msm)
         self._asin_doc_ids = asins
-        self._msmarco_doc_ids = msm
-
-    def qrels_all(self) -> Dict[str, List[Tuple[str, int]]]:
-        self._load_qrels()
-        return dict(self._qrels_all or {})
 
     def qrels_asin(self) -> Dict[str, List[Tuple[str, int]]]:
-        self._load_qrels()
+        self._load_qrels_asin()
         return dict(self._qrels_asin or {})
 
-    def qrels_msmarco(self) -> Dict[str, List[Tuple[str, int]]]:
-        self._load_qrels()
-        return dict(self._qrels_msmarco or {})
-
     def asin_doc_ids(self) -> Set[str]:
-        self._load_qrels()
+        self._load_qrels_asin()
         return set(self._asin_doc_ids or set())
 
-    def msmarco_doc_ids(self) -> Set[str]:
-        self._load_qrels()
-        return set(self._msmarco_doc_ids or set())
-
     # ---------- conversations ----------
-    def iter_conversations(self, partition: str = "raw") -> Iterator[CoSRecConversation]:
+    def iter_conversations(self, partition: str = "curated") -> Iterator[CoSRecConversation]:
         p = require_file(self.conversations_path(partition), hint="Run: python3 scripts/download_data.py")
         for conv_id, conv_text in _read_jsonl_single_key(p):
             turns = _parse_conversation_text(str(conv_text))
@@ -255,8 +246,12 @@ class CoSRecDataset:
         self._curated_conversations_index = idx
         return idx
 
-    # ---------- curated intents ----------
+    # ---------- curated intents (REC ONLY) ----------
     def _load_curated_intent_map(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Map base_intent_id -> {type, query_variants, conversation_id, utterance_idx, product?}
+        REC ONLY: ignores "search" etc.
+        """
         if self._curated_intent_map is not None:
             return self._curated_intent_map
 
@@ -273,63 +268,92 @@ class CoSRecDataset:
                     uidx = int(blk.get("utterance", -1))
                 except Exception:
                     uidx = -1
+
                 intents = blk.get("intents") or []
                 if not isinstance(intents, list):
                     continue
+
                 for it in intents:
                     if not isinstance(it, dict):
                         continue
                     iid = str(it.get("id", "")).strip()
                     typ = str(it.get("type", "")).strip()
+
+                    if not iid or typ not in self.REC_INTENT_TYPES:
+                        continue
+
                     qv = it.get("query_variants") or []
                     if not isinstance(qv, list):
                         qv = []
-                    if iid:
-                        m[iid] = {
-                            "type": typ,
-                            "query_variants": [str(x) for x in qv],
-                            "conversation_id": str(conv_id),
-                            "utterance_idx": uidx,
-                        }
+
+                    prod = it.get("product")
+                    product = str(prod).strip() if isinstance(prod, (str, int)) and str(prod).strip() else None
+
+                    m[iid] = {
+                        "type": typ,
+                        "query_variants": [str(x) for x in qv],
+                        "conversation_id": str(conv_id),
+                        "utterance_idx": uidx,
+                        "product": product,
+                    }
 
         self._curated_intent_map = m
         return m
 
-    # ---------- curated episodes (ASIN ONLY, ITEM REQUIRED) ----------
-    def iter_curated_item_episodes(
+    @staticmethod
+    def _parse_topic_id(topic_id: str) -> Tuple[str, int]:
+        """
+        qrels topic_id may be:
+          - "<base_intent_id>#<user_index>"  (common for recommendation)
+          - "<base_intent_id>"               (some intents may not be personalized)
+        """
+        s = str(topic_id).strip()
+        if "#" in s:
+            base, u = s.split("#", 1)
+            try:
+                return base, int(u)
+            except Exception:
+                return base, 0
+        return s, 0
+
+    # ---------- REC EPISODES ONLY ----------
+    def iter_rec_episodes(
         self,
-        intent_type: str = "recommendation",
         min_relevance: int = 1,
         emotion=None,
         bias=None,
-    ) -> Iterator[CoSRecCuratedEpisode]:
+        require_next_user: bool = True,
+    ) -> Iterator[CoSRecRecEpisode]:
+        """
+        Yields curated, item-grounded episodes for recommendation/product_details intents.
+
+        - Uses ONLY ASIN qrels
+        - Uses ONLY curated intents with type in REC_INTENT_TYPES
+        - If require_next_user=True, ensures next user message exists (useful for emotion labels)
+        """
         intent_map = self._load_curated_intent_map()
         qrels_asin = self.qrels_asin()
         conv_index = self._index_curated_conversations()
 
         for topic_id, judgs in qrels_asin.items():
-            if "#" not in topic_id:
-                continue
-
-            base_intent_id, user_index_str = topic_id.split("#", 1)
-            try:
-                user_index = int(user_index_str)
-            except Exception:
-                continue
+            base_intent_id, user_index = self._parse_topic_id(topic_id)
 
             meta = intent_map.get(base_intent_id)
             if not meta:
-                continue
-            if str(meta.get("type", "")) != intent_type:
                 continue
 
             good = [(d, r) for (d, r) in judgs if int(r) >= int(min_relevance)]
             if not good:
                 continue
 
-            conv_id, utterance_idx, _ = _split_intent_id(base_intent_id)
-            conv_id = str(meta.get("conversation_id", conv_id))
-            utterance_idx = int(meta.get("utterance_idx", utterance_idx))
+            conv_id = str(meta.get("conversation_id", "")).strip()
+            utterance_idx = int(meta.get("utterance_idx", -1))
+            intent_type = str(meta.get("type", "")).strip()
+            product = meta.get("product")
+            qv_raw = meta.get("query_variants", []) or []
+
+            if not conv_id or utterance_idx < 0 or intent_type not in self.REC_INTENT_TYPES:
+                continue
 
             conv = conv_index.get(conv_id)
             if conv is None:
@@ -337,29 +361,50 @@ class CoSRecDataset:
 
             user_turn_idx = _user_utterance_index_to_turn_index(conv.turns, utterance_idx)
             if user_turn_idx is None:
-                continue
+                # very defensive fallback (should not happen if intents.jsonl is consistent)
+                try:
+                    _, uidx_fallback, _ = _split_intent_id(base_intent_id)
+                    user_turn_idx = _user_utterance_index_to_turn_index(conv.turns, int(uidx_fallback))
+                except Exception:
+                    user_turn_idx = None
+                if user_turn_idx is None:
+                    continue
 
             system_turn_idx = user_turn_idx + 1
             if system_turn_idx >= len(conv.turns) or conv.turns[system_turn_idx].get("speaker") != "S":
                 continue
 
             next_user_turn_idx = _next_turn_index(conv.turns, system_turn_idx + 1, "U")
-            if next_user_turn_idx is None:
+            if require_next_user and next_user_turn_idx is None:
                 continue
+            if next_user_turn_idx is None:
+                # allow emitting even without next user if require_next_user=False
+                next_user_turn_idx = system_turn_idx
 
-            yield CoSRecCuratedEpisode(
+            # de-dupe query variants, preserve order
+            seen = set()
+            query_variants: List[str] = []
+            for x in qv_raw:
+                sx = str(x).strip()
+                if not sx or sx in seen:
+                    continue
+                seen.add(sx)
+                query_variants.append(sx)
+
+            yield CoSRecRecEpisode(
                 dataset=self,
                 conversation_id=conv_id,
-                topic_id=topic_id,
-                base_intent_id=base_intent_id,
-                user_index=user_index,
-                utterance_idx=utterance_idx,
-                intent_type=str(meta.get("type", "")),
-                query_variants=list(meta.get("query_variants", [])),
+                topic_id=str(topic_id),
+                base_intent_id=str(base_intent_id),
+                user_index=int(user_index),
+                utterance_idx=int(utterance_idx),
+                intent_type=intent_type,
+                product=str(product) if isinstance(product, str) else None,
+                query_variants=query_variants,
                 qrels=good,
-                user_turn_idx=user_turn_idx,
-                system_turn_idx=system_turn_idx,
-                next_user_turn_idx=next_user_turn_idx,
+                user_turn_idx=int(user_turn_idx),
+                system_turn_idx=int(system_turn_idx),
+                next_user_turn_idx=int(next_user_turn_idx),
                 user_text=conv.turns[user_turn_idx].get("text", ""),
                 system_text=conv.turns[system_turn_idx].get("text", ""),
                 next_user_text=conv.turns[next_user_turn_idx].get("text", ""),
