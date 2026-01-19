@@ -1,6 +1,6 @@
 from .redial import ReDialDataset, ReDialConversation
 from .movielens import MovieLens25M
-from .cosrec import CoSRecDataset, CoSRecConversation, CoSRecCuratedEpisode
+from .cosrec import CoSRecDataset, CoSRecConversation, CoSRecRecEpisode
 from .amazon_reviews import AmazonReviews2023Subset
 
 __all__ = [
@@ -9,6 +9,6 @@ __all__ = [
     "MovieLens25M",
     "CoSRecDataset",
     "CoSRecConversation",
-    "CoSRecCuratedEpisode",
+    "CoSRecRecEpisode",
     "AmazonReviews2023Subset",
 ]

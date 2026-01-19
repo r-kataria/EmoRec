@@ -1,21 +1,15 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
-import shutil
-import sys
 from pathlib import Path
-from typing import Optional
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
-from dataset import CoSRecDataset, ReDialDataset
-from emotion.go_emotions_cosrec import GoEmotionsCoSRec
-from emotion.go_emotions_redial import GoEmotionsReDial
+from typing import Iterable, Optional
 
 
-def _parse_device(value: str):
+def _parse_device(value):
+    if isinstance(value, int):
+        return value
+    if value is None:
+        return -1
     v = str(value).strip()
     if v.lower() == "mps":
         return "mps"
@@ -25,106 +19,135 @@ def _parse_device(value: str):
         return v
 
 
-def _parse_top_k(value: str) -> Optional[int]:
+def _parse_top_k(value: Optional[str | int]) -> Optional[int]:
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
     v = str(value).strip().lower()
     if v in {"all", "none"}:
         return None
     return int(v)
 
 
-def _has_json(path: Path) -> bool:
-    if not path.exists():
-        return False
-    return any(path.rglob("*.json"))
+def _normalize_splits(splits: Iterable[str] | str) -> list[str]:
+    if isinstance(splits, str):
+        return [s.strip() for s in splits.split(",") if s.strip()]
+    return [str(s).strip() for s in splits if str(s).strip()]
 
 
-def _clear_dir(path: Path) -> None:
-    if path.exists():
-        shutil.rmtree(path)
+def build_redial_emotions(
+    cache_root: Path | str = "./cache",
+    device: str | int = -1,
+    top_k: Optional[int | str] = 5,
+    truncation: bool = True,
+    resolve_movie_titles: bool = True,
+    max_length: Optional[int] = None,
+    batch_size: Optional[int] = None,
+    splits: Iterable[str] | str = ("train", "test"),
+    max_new: Optional[int] = None,
+    every: int = 200,
+) -> None:
+    from dataset import ReDialDataset
+    from emotion.go_emotions_redial import GoEmotionsReDial
 
-
-def _build_redial(args, cache_root: Path) -> None:
+    cache_root = Path(cache_root)
     ds = ReDialDataset(cache_root=cache_root)
     emo = GoEmotionsReDial(
         cache_root=cache_root,
-        device=_parse_device(args.device),
-        top_k=_parse_top_k(args.top_k),
-        truncation=not args.no_truncation,
-        resolve_movie_titles=not args.raw_movie_tags,
-        max_length=args.max_length,
-        batch_size=args.batch_size,
+        device=_parse_device(device),
+        top_k=_parse_top_k(top_k),
+        truncation=truncation,
+        resolve_movie_titles=resolve_movie_titles,
+        max_length=max_length,
+        batch_size=batch_size,
     )
 
-    splits = [s.strip() for s in args.splits.split(",") if s.strip()]
-    for split in splits:
-        split_dir = emo._base_dir() / split
-        if _has_json(split_dir) and not args.force:
-            print(f"[redial] cache exists for split={split}, skipping")
-            continue
-        if args.force:
-            _clear_dir(split_dir)
+    for split in _normalize_splits(splits):
         emo.build(
             ds,
             split=split,
-            max_new=args.max_new,
+            max_new=max_new,
             progress_path=cache_root / f"emotion_progress_redial_{split}.json",
-            every=args.every,
+            every=every,
         )
 
 
-def _build_cosrec(args, cache_root: Path) -> None:
+def build_cosrec_emotions(
+    cache_root: Path | str = "./cache",
+    device: str | int = -1,
+    top_k: Optional[int | str] = 5,
+    truncation: bool = True,
+    max_length: Optional[int] = None,
+    batch_size: Optional[int] = None,
+    intent_type: str = "recommendation",
+    min_relevance: int = 1,
+    max_new: Optional[int] = None,
+    every: int = 25,
+) -> None:
+    from dataset import CoSRecDataset
+    from emotion.go_emotions_cosrec import GoEmotionsCoSRec
+
+    cache_root = Path(cache_root)
     ds = CoSRecDataset(cache_root=cache_root)
     emo = GoEmotionsCoSRec(
         cache_root=cache_root,
-        device=_parse_device(args.device),
-        top_k=_parse_top_k(args.top_k),
-        truncation=not args.no_truncation,
-        max_length=args.max_length,
-        batch_size=args.batch_size,
+        device=_parse_device(device),
+        top_k=_parse_top_k(top_k),
+        truncation=truncation,
+        max_length=max_length,
+        batch_size=batch_size,
     )
-
-    base_dir = emo._base_dir()
-    if _has_json(base_dir) and not args.force:
-        print("[cosrec] cache exists, skipping")
-        return
-    if args.force:
-        _clear_dir(base_dir)
 
     emo.build(
         ds,
-        intent_type=args.intent_type,
-        min_relevance=args.min_relevance,
-        max_new=args.max_new,
+        intent_type=intent_type,
+        min_relevance=min_relevance,
+        max_new=max_new,
         progress_path=cache_root / "emotion_progress_cosrec.json",
-        every=args.every,
+        every=every,
     )
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Build GoEmotions caches for ReDial and CoSRec.")
-    parser.add_argument("--cache-root", default=str(ROOT / "cache"))
-    parser.add_argument("--dataset", choices=["redial", "cosrec", "all"], default="all")
-    parser.add_argument("--device", default="-1")
-    parser.add_argument("--top-k", default="5")
-    parser.add_argument("--batch-size", type=int, default=None)
-    parser.add_argument("--max-length", type=int, default=None)
-    parser.add_argument("--no-truncation", action="store_true")
-    parser.add_argument("--raw-movie-tags", action="store_true")
-    parser.add_argument("--splits", default="train,test")
-    parser.add_argument("--intent-type", default="recommendation")
-    parser.add_argument("--min-relevance", type=int, default=1)
-    parser.add_argument("--max-new", type=int, default=None)
-    parser.add_argument("--every", type=int, default=200)
-    parser.add_argument("--force", action="store_true")
-    args = parser.parse_args()
-
-    cache_root = Path(args.cache_root)
-
-    if args.dataset in {"redial", "all"}:
-        _build_redial(args, cache_root)
-    if args.dataset in {"cosrec", "all"}:
-        _build_cosrec(args, cache_root)
-
-
-if __name__ == "__main__":
-    main()
+def build_emotions(
+    cache_root: Path | str = "./cache",
+    dataset: str = "all",
+    device: str | int = -1,
+    top_k: Optional[int | str] = 5,
+    truncation: bool = True,
+    resolve_movie_titles: bool = True,
+    max_length: Optional[int] = None,
+    batch_size: Optional[int] = None,
+    splits: Iterable[str] | str = ("train", "test"),
+    intent_type: str = "recommendation",
+    min_relevance: int = 1,
+    max_new: Optional[int] = None,
+    every: int = 200,
+) -> None:
+    dataset = str(dataset or "all").strip().lower()
+    if dataset in {"redial", "all"}:
+        build_redial_emotions(
+            cache_root=cache_root,
+            device=device,
+            top_k=top_k,
+            truncation=truncation,
+            resolve_movie_titles=resolve_movie_titles,
+            max_length=max_length,
+            batch_size=batch_size,
+            splits=splits,
+            max_new=max_new,
+            every=every,
+        )
+    if dataset in {"cosrec", "all"}:
+        build_cosrec_emotions(
+            cache_root=cache_root,
+            device=device,
+            top_k=top_k,
+            truncation=truncation,
+            max_length=max_length,
+            batch_size=batch_size,
+            intent_type=intent_type,
+            min_relevance=min_relevance,
+            max_new=max_new,
+            every=25 if every is None else every,
+        )

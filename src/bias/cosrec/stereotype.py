@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from dataset.cosrec import CoSRecCuratedEpisode, safe_id
+from dataset.cosrec import CoSRecRecEpisode, safe_id
 from bias.stereotype_base import StereotypeBiasBase
 
 
@@ -13,13 +13,13 @@ class StereotypeBiasCoSRec(StereotypeBiasBase):
     def _base_dir(self) -> Path:
         return self.cache_root / "bias" / "stereotype" / "cosrec" / self._top_dir() / "curated"
 
-    def _ep_path(self, ep: CoSRecCuratedEpisode) -> Path:
+    def _ep_path(self, ep: CoSRecRecEpisode) -> Path:
         return self._base_dir() / f"{safe_id(ep.topic_id)}.json"
 
-    def has(self, ep: CoSRecCuratedEpisode) -> bool:
+    def has(self, ep: CoSRecRecEpisode) -> bool:
         return self._ep_path(ep).exists()
 
-    def get(self, ep: CoSRecCuratedEpisode) -> Dict[str, Any]:
+    def get(self, ep: CoSRecRecEpisode) -> Dict[str, Any]:
         p = self._ep_path(ep)
         if p.exists():
             with open(p, "r", encoding="utf-8") as f:
@@ -65,11 +65,12 @@ class StereotypeBiasCoSRec(StereotypeBiasBase):
         computed = 0
         t0 = time.time()
 
-        for ep in ds.iter_curated_item_episodes(
-            intent_type=intent_type,
+        for ep in ds.iter_rec_episodes(
             min_relevance=min_relevance,
             bias=self,
         ):
+            if intent_type and ep.intent_type != intent_type:
+                continue
             processed += 1
             if not self.has(ep):
                 _ = self.get(ep)

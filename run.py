@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -31,6 +32,16 @@ def _parse_top_k(value: str):
 def _run_script(path: Path, args: list[str]) -> None:
     cmd = [sys.executable, str(path)] + args
     subprocess.run(cmd, check=True)
+
+
+def _load_emotions_module():
+    path = ROOT / "scripts" / "2_build_emotions.py"
+    spec = importlib.util.spec_from_file_location("build_emotions_module", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _has_json(path: Path) -> bool:
@@ -191,37 +202,22 @@ def main() -> None:
         _run_script(scripts_dir / "1_download_data.py", [])
 
     if args.emotions:
-        emo_args = [
-            "--cache-root",
-            str(cache_root),
-            "--dataset",
-            args.emotion_dataset,
-            "--device",
-            str(args.device),
-            "--top-k",
-            str(args.top_k),
-            "--splits",
-            args.splits,
-            "--intent-type",
-            args.intent_type,
-            "--min-relevance",
-            str(args.min_relevance),
-            "--every",
-            str(args.every),
-        ]
-        if args.batch_size is not None:
-            emo_args += ["--batch-size", str(args.batch_size)]
-        if args.max_length is not None:
-            emo_args += ["--max-length", str(args.max_length)]
-        if args.no_truncation:
-            emo_args.append("--no-truncation")
-        if args.raw_movie_tags:
-            emo_args.append("--raw-movie-tags")
-        if args.max_new is not None:
-            emo_args += ["--max-new", str(args.max_new)]
-        if args.force:
-            emo_args.append("--force")
-        _run_script(scripts_dir / "2_build_emotions.py", emo_args)
+        emo_mod = _load_emotions_module()
+        emo_mod.build_emotions(
+            cache_root=cache_root,
+            dataset=args.emotion_dataset,
+            device=args.device,
+            top_k=args.top_k,
+            truncation=not args.no_truncation,
+            resolve_movie_titles=not args.raw_movie_tags,
+            max_length=args.max_length,
+            batch_size=args.batch_size,
+            splits=args.splits,
+            intent_type=args.intent_type,
+            min_relevance=args.min_relevance,
+            max_new=args.max_new,
+            every=args.every,
+        )
 
     if args.biases:
         _build_biases(args, cache_root)
