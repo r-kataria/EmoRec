@@ -61,28 +61,17 @@ def main():
 
     # ReDial: checkout data branch + unzip
     redial_zip = redial / "redial_dataset.zip"
-    if redial.exists():
-        echo("Updating ReDial repo and checking out data branch")
-        run(f"cd {redial} && git fetch --all && git checkout data")
-
     unzip(redial_zip, redial)
 
-    # --------------------
     # MovieLens 25M
-    # --------------------
     ml_dir = BASE / "movielens/ml-25m"
     ensure_dir(ml_dir)
 
     ml_zip = ml_dir / "ml-25m.zip"
-    download(
-        "https://files.grouplens.org/datasets/movielens/ml-25m.zip",
-        ml_zip,
-    )
+    download("https://files.grouplens.org/datasets/movielens/ml-25m.zip", ml_zip)
     unzip(ml_zip, ml_dir)
 
-    # --------------------
     # Amazon Reviews 2023
-    # --------------------
     amazon = BASE / "amazon_2023"
     ensure_dir(amazon)
 
@@ -119,9 +108,7 @@ def main():
     else:
         echo("Amazon review_categories exists, skipping")
 
-    # --------------------
     # MS MARCO
-    # --------------------
     msmarco = BASE / "msmarco"
     ensure_dir(msmarco)
 
