@@ -5,8 +5,6 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from transformers import pipeline
-
 from dataset.redial import (
     ReDialConversation,
     ReDialDataset,
@@ -15,11 +13,10 @@ from dataset.redial import (
     replace_movie_tags_with_titles,
     safe_id,
 )
+from emotion.go_emotions_base import GoEmotionsBase
 
 
-class GoEmotionsRedial:
-    MODEL = "SamLowe/roberta-base-go_emotions"
-
+class GoEmotionsRedial(GoEmotionsBase):
     def __init__(
         self,
         cache_root: Path | str = "./cache",
@@ -27,22 +24,22 @@ class GoEmotionsRedial:
         top_k: int = 5,
         truncation: bool = True,
         resolve_movie_titles: bool = True,
+        max_length: Optional[int] = None,
+        batch_size: Optional[int] = None,
     ):
-        self.cache_root = Path(cache_root)
         self.resolve_movie_titles = resolve_movie_titles
-        self.top_k = int(top_k)
-
-        self.emo_clf = pipeline(
-            task="text-classification",
-            model=self.MODEL,
-            top_k=self.top_k,
+        super().__init__(
+            cache_root=cache_root,
             device=device,
+            top_k=top_k,
             truncation=truncation,
+            max_length=max_length,
+            batch_size=batch_size,
         )
 
     def _base_dir(self) -> Path:
         mode = "titles" if self.resolve_movie_titles else "raw"
-        return self.cache_root / "emotion" / "go_emotions" / f"top{self.top_k}" / mode
+        return self.cache_root / "emotion" / "go_emotions" / self._top_dir() / mode
 
     def _conv_path(self, conv: ReDialConversation) -> Path:
         return self._base_dir() / conv.split / f"{safe_id(conv.conversation_id)}.json"
@@ -73,22 +70,16 @@ class GoEmotionsRedial:
 
         for i, msg in enumerate(conv.messages):
             raw_text = msg.get("text", "") if isinstance(msg, dict) else ""
+            text = self._coerce_text(raw_text)
             speakers.append(get_speaker(msg, i))
-            movie_ids.append(extract_movie_ids(raw_text))
+            movie_ids.append(extract_movie_ids(text))
             texts.append(
-                replace_movie_tags_with_titles(raw_text, mentions)
+                replace_movie_tags_with_titles(text, mentions)
                 if self.resolve_movie_titles
-                else (raw_text or "")
+                else text
             )
 
-        outs = self.emo_clf(texts)
-
-        preds_topk: List[List[Dict[str, float]]] = []
-        for o in outs:
-            if isinstance(o, list):
-                preds_topk.append([{"label": str(d["label"]), "score": float(d["score"])} for d in o])
-            else:
-                preds_topk.append([{"label": str(o["label"]), "score": float(o["score"])}])
+        preds_topk = self._predict_texts(texts)
 
         return {
             "dataset": "redial",
@@ -151,3 +142,6 @@ class GoEmotionsRedial:
                         f,
                         ensure_ascii=False,
                     )
+
+
+GoEmotions = GoEmotionsRedial
