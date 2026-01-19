@@ -91,9 +91,14 @@ class AmazonReviews2023Subset:
 
     # ---------- step 1 ----------
     def ensure_asin2category(self) -> None:
+        if self.asin2cat_path.exists() and self.asin2cat_path.stat().st_size > 0:
+            if self.verbose:
+                print("[amazon] asin2category.json already present")
+            return
         if self.verbose:
             print("[amazon] asin2category.json (wget)")
         _run(["wget", "-c", "-O", str(self.asin2cat_path), ASIN2CATEGORY_URL])
+
 
     # ---------- step 2 ----------
     def build_needed_categories(self) -> None:
@@ -156,29 +161,57 @@ class AmazonReviews2023Subset:
         self._asin_to_cat = asin_to_cat
         self._categories = cats
 
-    # ---------- step 3 ----------
+
     def download_needed_files(self, download_reviews: bool = False) -> None:
-        """
-        Uses wget -c -i <urls> -P <dir>
-        """
         self.build_needed_categories()
 
         self.raw_meta_dir.mkdir(parents=True, exist_ok=True)
-        if self.verbose:
-            print("[amazon] download meta_categories (wget -c -i meta_urls.txt)")
-        _run(["wget", "-c", "-i", str(self.meta_urls_path), "-P", str(self.raw_meta_dir)])
+        self.raw_review_dir.mkdir(parents=True, exist_ok=True)
+
+        cats = sorted(self._categories or set())
+
+        # Build "missing only" url lists
+        missing_meta_urls = []
+        missing_review_urls = []
+
+        for c in cats:
+            meta_dest = self.raw_meta_dir / f"meta_{c}.jsonl.gz"
+            if not meta_dest.exists() or meta_dest.stat().st_size == 0:
+                missing_meta_urls.append(META_BASE_URL + f"meta_{c}.jsonl.gz")
+
+            if download_reviews:
+                review_dest = self.raw_review_dir / f"{c}.jsonl.gz"
+                if not review_dest.exists() or review_dest.stat().st_size == 0:
+                    missing_review_urls.append(REVIEW_BASE_URL + f"{c}.jsonl.gz")
+
+        # Write temp files under cache (not scripts/)
+        missing_meta_list = self.root / "meta_urls_missing.txt"
+        missing_review_list = self.root / "review_urls_missing.txt"
+
+        if missing_meta_urls:
+            missing_meta_list.write_text("\n".join(missing_meta_urls) + "\n", encoding="utf-8")
+            if self.verbose:
+                print(f"[amazon] downloading {len(missing_meta_urls)} missing meta files (wget)")
+            _run(["wget", "-c", "-i", str(missing_meta_list), "-P", str(self.raw_meta_dir)])
+        else:
+            if self.verbose:
+                print("[amazon] meta files already present (skip)")
 
         if download_reviews:
-            self.raw_review_dir.mkdir(parents=True, exist_ok=True)
-            if self.verbose:
-                print("[amazon] download review_categories (wget -c -i review_urls.txt)")
-            _run(["wget", "-c", "-i", str(self.review_urls_path), "-P", str(self.raw_review_dir)])
+            if missing_review_urls:
+                missing_review_list.write_text("\n".join(missing_review_urls) + "\n", encoding="utf-8")
+                if self.verbose:
+                    print(f"[amazon] downloading {len(missing_review_urls)} missing review files (wget)")
+                _run(["wget", "-c", "-i", str(missing_review_list), "-P", str(self.raw_review_dir)])
+            else:
+                if self.verbose:
+                    print("[amazon] review files already present (skip)")
 
     # ---------- step 4 ----------
     def process_dataset(self, include_reviews: bool = False) -> Path:
         """
         Writes:
-          cache/datasets/amazon_2023/processed/processed_catalogue.jsonl.gz
+        cache/datasets/amazon_2023/processed/processed_catalogue.jsonl.gz
         Meta-only is enough for price/store/categories/num_ratings biases.
         """
         self._ensure_asin_mapping_loaded()
