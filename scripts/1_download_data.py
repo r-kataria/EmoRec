@@ -54,6 +54,8 @@ def download_redial():
     redial = BASE / "redial"
     git_clone("https://github.com/ReDialData/website", redial)
 
+    run(f"cd {redial} && git checkout data")
+    
     redial_zip = redial / "redial_dataset.zip"
     if not redial_zip.exists():
         raise FileNotFoundError(f"Expected ReDial zip not found: {redial_zip}")
