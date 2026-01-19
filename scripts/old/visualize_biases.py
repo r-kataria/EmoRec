@@ -299,7 +299,7 @@ def threshold_from_sorted(sorted_vals: List[int], q: float) -> int:
 # Scan cached popularity bias (turn-level + item-level)
 # ----------------------------
 def scan_popularity(cache_root: Path, split: str) -> Dict[str, Any]:
-    base = cache_root / "bias" / "popularity" / "ml-25m" / split
+    base = cache_root / "bias" / "popularity" / "redial" / "ml-25m" / split
     files = glob_jsons(base)
 
     # per-conv summary metrics already computed by PopularityBias
@@ -415,7 +415,7 @@ def scan_popularity(cache_root: Path, split: str) -> Dict[str, Any]:
 # Scan redundancy cache
 # ----------------------------
 def scan_redundancy(cache_root: Path, split: str) -> Dict[str, Any]:
-    base = cache_root / "bias" / "redundancy" / "ml-25m" / split
+    base = cache_root / "bias" / "redundancy" / "redial" / "ml-25m" / split
     files = glob_jsons(base)
 
     redundancy_rates = []
@@ -488,7 +488,7 @@ def scan_redundancy(cache_root: Path, split: str) -> Dict[str, Any]:
 # Scan genre cache
 # ----------------------------
 def scan_genre(cache_root: Path, split: str) -> Dict[str, Any]:
-    base = cache_root / "bias" / "genre" / "ml-25m" / split
+    base = cache_root / "bias" / "genre" / "redial" / "ml-25m" / split
     files = glob_jsons(base)
 
     jsd_vals = []
@@ -551,7 +551,7 @@ def scan_genre(cache_root: Path, split: str) -> Dict[str, Any]:
 # Exposure concentration (derive from popularity caches so we can do top% shares & Lorenz)
 # ----------------------------
 def exposure_from_popularity(cache_root: Path, split: str) -> Dict[str, Any]:
-    base = cache_root / "bias" / "popularity" / "ml-25m" / split
+    base = cache_root / "bias" / "popularity" / "redial" / "ml-25m" / split
     files = glob_jsons(base)
     counts = Counter()
 
@@ -769,7 +769,7 @@ def main() -> None:
     def exposure_all() -> Dict[str, Any]:
         counts = Counter()
         for split in ("train", "test"):
-            base = cache_root / "bias" / "popularity" / "ml-25m" / split
+            base = cache_root / "bias" / "popularity" / "redial" / "ml-25m" / split
             for fp in glob_jsons(base):
                 try:
                     rec = read_json(fp)

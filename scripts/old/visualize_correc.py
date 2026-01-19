@@ -3,7 +3,7 @@
 Co-recommendation community analysis (ReDial, using your cached MovieLens-mapped rec turns).
 
 Reads:
-  ./cache/bias/popularity/ml-25m/{train|test}/*.json
+  ./cache/bias/popularity/redial/ml-25m/{train|test}/*.json
 
 Builds a co-recommendation graph:
   - nodes = MovieLens movieId (only items that appear in your cached popularity files)
@@ -220,9 +220,9 @@ def iter_popularity_turns(cache_root: Path, split: str) -> Iterable[Tuple[str, i
     """
     Yields (conversationId, msg_idx, movielens_movie_ids) for recommender turns.
     Reads cached popularity outputs:
-      <cache_root>/bias/popularity/ml-25m/{split}/*.json
+      <cache_root>/bias/popularity/redial/ml-25m/{split}/*.json
     """
-    base = cache_root / "bias" / "popularity" / "ml-25m" / split
+    base = cache_root / "bias" / "popularity" / "redial" / "ml-25m" / split
     for fp in glob_jsons(base):
         rec = read_json(fp)
         cid = str(rec.get("conversationId", ""))

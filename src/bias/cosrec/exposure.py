@@ -6,9 +6,6 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dataset.movielens import MovieLens25M
-from dataset.redial import extract_movie_ids, get_speaker
-
 
 def _gini(counts: List[int]) -> float:
     if not counts:
@@ -31,54 +28,54 @@ def _hhi(freqs: List[int]) -> float:
     return float(sum((f / s) ** 2 for f in freqs))
 
 
-class ExposureConcentration:
-    def __init__(self, cache_root: Path | str = "./cache", movielens: Optional[MovieLens25M] = None):
+class ExposureConcentrationCoSRec:
+    def __init__(self, cache_root: Path | str = "./cache"):
         self.cache_root = Path(cache_root)
-        self.ml = movielens or MovieLens25M(cache_root=self.cache_root)
-        self.ml.ensure_rating_counts()
 
-    def _out_path(self, split: str) -> Path:
-        return self.cache_root / "bias" / "exposure_concentration" / "redial" / "ml-25m" / f"{split}.json"
+    def _out_path(self) -> Path:
+        return (
+            self.cache_root
+            / "bias"
+            / "exposure_concentration"
+            / "cosrec"
+            / "amazon_2023"
+            / "curated.json"
+        )
 
-    def has(self, split: str) -> bool:
-        return self._out_path(split).exists()
+    def has(self) -> bool:
+        return self._out_path().exists()
 
     def build(
         self,
         ds,
-        split: str = "train",
-        start: int = 0,
-        max_convos: Optional[int] = None,
+        intent_type: str = "recommendation",
+        min_relevance: int = 1,
+        max_new: Optional[int] = None,
         force: bool = False,
         progress_path: Optional[Path | str] = None,
-        every: int = 200,
+        every: int = 25,
     ) -> Dict[str, Any]:
-        out_p = self._out_path(split)
+        out_p = self._out_path()
         if out_p.exists() and not force:
             with open(out_p, "r", encoding="utf-8") as f:
                 return json.load(f)
 
         progress_p = Path(progress_path) if progress_path is not None else None
-
         counts = Counter()
         processed = 0
         t0 = time.time()
 
-        for conv in ds.iter(split=split, start=start, max_convos=max_convos):
+        for ep in ds.iter_rec_episodes(
+            min_relevance=min_relevance,
+        ):
+            if intent_type and ep.intent_type != intent_type:
+                continue
             processed += 1
-            for i, msg in enumerate(conv.messages):
-                if get_speaker(msg, i) != "Recommender":
-                    continue
-                raw_text = msg.get("text", "") if isinstance(msg, dict) else ""
-                redial_ids = extract_movie_ids(raw_text)
-                for rid in redial_ids:
-                    title = (conv.movie_mentions or {}).get(str(rid))
-                    if not title:
-                        continue
-                    mid = self.ml.map_title(title)
-                    if mid is None:
-                        continue
-                    counts[int(mid)] += 1
+            for asin, _ in ep.qrels:
+                counts[str(asin)] += 1
+
+            if max_new is not None and processed >= max_new:
+                break
 
             if progress_p is not None and every and (processed % every == 0):
                 progress_p.parent.mkdir(parents=True, exist_ok=True)
@@ -86,8 +83,9 @@ class ExposureConcentration:
                     json.dump(
                         {
                             "bias": "exposure_concentration",
-                            "split": split,
-                            "processed_conversations": processed,
+                            "dataset": "cosrec",
+                            "partition": "curated",
+                            "processed_episodes": processed,
                             "unique_items_so_far": len(counts),
                             "total_mentions_so_far": sum(counts.values()),
                             "elapsed_s": time.time() - t0,
@@ -108,9 +106,9 @@ class ExposureConcentration:
             return float(sum(top_sorted[:k]) / total_mentions)
 
         rec = {
-            "dataset": "redial",
-            "split": split,
-            "movielens_version": "ml-25m",
+            "dataset": "cosrec",
+            "partition": "curated",
+            "catalogue": "amazon_2023",
             "created_at_unix": time.time(),
             "unique_items": unique_items,
             "total_mentions": total_mentions,

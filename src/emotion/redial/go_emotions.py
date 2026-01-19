@@ -39,7 +39,7 @@ class GoEmotionsReDial(GoEmotionsBase):
 
     def _base_dir(self) -> Path:
         mode = "titles" if self.resolve_movie_titles else "raw"
-        return self.cache_root / "emotion" / "go_emotions" / self._top_dir() / mode
+        return self.cache_root / "emotion" / "go_emotions" / "redial" / self._top_dir() / mode
 
     def _conv_path(self, conv: ReDialConversation) -> Path:
         return self._base_dir() / conv.split / f"{safe_id(conv.conversation_id)}.json"
@@ -126,20 +126,29 @@ class GoEmotionsReDial(GoEmotionsBase):
                 if max_new is not None and computed >= max_new:
                     break
 
-            if progress_p is not None and every and (processed % every == 0):
-                progress_p.parent.mkdir(parents=True, exist_ok=True)
-                with open(progress_p, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "signal": "emotion",
-                            "model": self.MODEL,
-                            "top_k": self.top_k,
-                            "split": split,
-                            "processed_conversations": processed,
-                            "computed_new_conversations": computed,
-                            "elapsed_s": time.time() - t0,
-                        },
-                        f,
-                        ensure_ascii=False,
-                    )
+            if every and (processed % every == 0):
+                if progress_p is not None:
+                    progress_p.parent.mkdir(parents=True, exist_ok=True)
+                    with open(progress_p, "w", encoding="utf-8") as f:
+                        json.dump(
+                            {
+                                "signal": "emotion",
+                                "model": self.MODEL,
+                                "top_k": self.top_k,
+                                "split": split,
+                                "processed_conversations": processed,
+                                "computed_new_conversations": computed,
+                                "elapsed_s": time.time() - t0,
+                            },
+                            f,
+                            ensure_ascii=False,
+                        )
+                print(
+                    f"[emotion:redial] split={split} processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+                    flush=True,
+                )
 
+        print(
+            f"[emotion:redial] split={split} done processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+            flush=True,
+        )

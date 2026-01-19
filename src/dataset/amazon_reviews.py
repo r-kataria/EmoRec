@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import bisect
 import gzip
 import json
 import math
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Set
@@ -307,3 +309,183 @@ class AmazonReviews2023Subset:
         if self.verbose:
             print(f"[amazon] processed catalogue written: {out}")
         return out
+
+
+class AmazonReviews2023Index:
+    """
+    Index for the CoSRec-specific Amazon Reviews 2023 subset.
+    Uses ONLY qrels ASINs, not the full Amazon dataset.
+    """
+
+    def __init__(
+        self,
+        cache_root: Path | str = "./cache",
+        cosrec: Optional[CoSRecDataset] = None,
+        include_reviews: bool = False,
+        verbose: bool = True,
+    ):
+        self.cache_root = Path(cache_root)
+        self.cosrec = cosrec or CoSRecDataset(cache_root=self.cache_root)
+        self.subset = AmazonReviews2023Subset(
+            cache_root=self.cache_root,
+            cosrec=self.cosrec,
+            verbose=verbose,
+        )
+        self.include_reviews = bool(include_reviews)
+
+        self.index_path = self.subset.processed_dir / "catalogue_index.json"
+
+        self._index: Optional[Dict[str, Dict[str, Any]]] = None
+        self._sorted_counts: Optional[list[int]] = None
+        self._sorted_ratings: Optional[list[float]] = None
+        self._top10_threshold: Optional[int] = None
+        self._category_baseline: Optional[Dict[str, float]] = None
+
+    @staticmethod
+    def _safe_int(value: Any, default: int = 0) -> int:
+        try:
+            return int(value)
+        except Exception:
+            return int(default)
+
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            v = float(value)
+        except Exception:
+            return float(default)
+        if not math.isfinite(v):
+            return float(default)
+        return float(v)
+
+    def _processed_path(self) -> Path:
+        return self.subset.processed_dir / "processed_catalogue.jsonl.gz"
+
+    def ensure_index(self) -> None:
+        if self._index is not None:
+            return
+
+        if self.index_path.exists() and self.index_path.stat().st_size > 0:
+            with open(self.index_path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            self._index = {str(k): v for k, v in raw.items()}
+            return
+
+        processed = self._processed_path()
+        if not processed.exists() or processed.stat().st_size == 0:
+            processed = self.subset.process_dataset(include_reviews=self.include_reviews)
+        processed = require_file(processed, hint="Run: python3 scripts/download_data.py")
+
+        idx: Dict[str, Dict[str, Any]] = {}
+        with gzip.open(processed, "rt", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                data = json.loads(line)
+                asin = str(data.get("parent_asin") or "").strip()
+                if not asin:
+                    continue
+                categories = data.get("categories") or []
+                if not isinstance(categories, list):
+                    categories = []
+
+                idx[asin] = {
+                    "categories": [str(c) for c in categories if c],
+                    "num_ratings": self._safe_int(data.get("num_ratings"), 0),
+                    "avg_ratings": self._safe_float(data.get("avg_ratings"), 0.0),
+                    "num_valid_ratings": self._safe_int(data.get("num_valid_ratings"), 0),
+                    "avg_valid_ratings": self._safe_float(data.get("avg_valid_ratings"), 0.0),
+                    "price": self._safe_float(data.get("price"), 0.0),
+                    "store": str(data.get("store") or ""),
+                }
+
+        self.index_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.index_path, "w", encoding="utf-8") as f:
+            json.dump(idx, f, ensure_ascii=False)
+
+        self._index = idx
+
+    def index(self) -> Dict[str, Dict[str, Any]]:
+        self.ensure_index()
+        return dict(self._index or {})
+
+    def get(self, asin: str) -> Optional[Dict[str, Any]]:
+        self.ensure_index()
+        if self._index is None:
+            return None
+        return self._index.get(str(asin))
+
+    def rating_value(self, meta: Optional[Dict[str, Any]]) -> Optional[float]:
+        if not meta:
+            return None
+        num_valid = self._safe_int(meta.get("num_valid_ratings"), 0)
+        if num_valid > 0:
+            val = meta.get("avg_valid_ratings")
+        else:
+            val = meta.get("avg_ratings")
+        try:
+            v = float(val)
+        except Exception:
+            return None
+        if not math.isfinite(v):
+            return None
+        return float(v)
+
+    def _ensure_sorted_counts(self) -> None:
+        if self._sorted_counts is not None:
+            return
+        self.ensure_index()
+        counts = [self._safe_int(v.get("num_ratings"), 0) for v in (self._index or {}).values()]
+        counts.sort()
+        self._sorted_counts = counts
+        n = len(counts)
+        self._top10_threshold = counts[int(0.9 * (n - 1))] if n > 0 else 0
+
+    def _ensure_sorted_ratings(self) -> None:
+        if self._sorted_ratings is not None:
+            return
+        self.ensure_index()
+        ratings = []
+        for v in (self._index or {}).values():
+            r = self.rating_value(v)
+            if r is None:
+                continue
+            ratings.append(float(r))
+        ratings.sort()
+        self._sorted_ratings = ratings
+
+    def popularity_percentile(self, num_ratings: int) -> float:
+        self._ensure_sorted_counts()
+        if not self._sorted_counts:
+            return 0.0
+        i = bisect.bisect_left(self._sorted_counts, int(num_ratings))
+        return float(i) / float(len(self._sorted_counts))
+
+    def rating_percentile(self, rating: float) -> float:
+        self._ensure_sorted_ratings()
+        if not self._sorted_ratings:
+            return 0.0
+        i = bisect.bisect_left(self._sorted_ratings, float(rating))
+        return float(i) / float(len(self._sorted_ratings))
+
+    def top10_threshold(self) -> int:
+        self._ensure_sorted_counts()
+        return int(self._top10_threshold or 0)
+
+    def category_baseline(self) -> Dict[str, float]:
+        if self._category_baseline is not None:
+            return dict(self._category_baseline)
+
+        self.ensure_index()
+        counts = defaultdict(int)
+        total = 0
+        for v in (self._index or {}).values():
+            cats = v.get("categories") or []
+            if not isinstance(cats, list):
+                continue
+            for c in cats:
+                counts[str(c)] += 1
+                total += 1
+        self._category_baseline = {c: counts[c] / total for c in counts} if total else {}
+        return dict(self._category_baseline)

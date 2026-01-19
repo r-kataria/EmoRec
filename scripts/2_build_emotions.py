@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -9,10 +10,10 @@ def _parse_device(value):
     if isinstance(value, int):
         return value
     if value is None:
-        return -1
+        return "auto"
     v = str(value).strip()
-    if v.lower() == "mps":
-        return "mps"
+    if v.lower() in {"auto", "mps"}:
+        return v.lower()
     try:
         return int(v)
     except Exception:
@@ -38,7 +39,7 @@ def _normalize_splits(splits: Iterable[str] | str) -> list[str]:
 
 def build_redial_emotions(
     cache_root: Path | str = "./cache",
-    device: str | int = -1,
+    device: str | int = "auto",
     top_k: Optional[int | str] = 5,
     truncation: bool = True,
     resolve_movie_titles: bool = True,
@@ -47,6 +48,7 @@ def build_redial_emotions(
     splits: Iterable[str] | str = ("train", "test"),
     max_new: Optional[int] = None,
     every: int = 200,
+    force: bool = False,
 ) -> None:
     from dataset import ReDialDataset
     from emotion.go_emotions_redial import GoEmotionsReDial
@@ -64,6 +66,10 @@ def build_redial_emotions(
     )
 
     for split in _normalize_splits(splits):
+        if force:
+            split_dir = emo._base_dir() / split
+            if split_dir.exists():
+                shutil.rmtree(split_dir)
         emo.build(
             ds,
             split=split,
@@ -75,7 +81,7 @@ def build_redial_emotions(
 
 def build_cosrec_emotions(
     cache_root: Path | str = "./cache",
-    device: str | int = -1,
+    device: str | int = "auto",
     top_k: Optional[int | str] = 5,
     truncation: bool = True,
     max_length: Optional[int] = None,
@@ -84,6 +90,7 @@ def build_cosrec_emotions(
     min_relevance: int = 1,
     max_new: Optional[int] = None,
     every: int = 25,
+    force: bool = False,
 ) -> None:
     from dataset import CoSRecDataset
     from emotion.go_emotions_cosrec import GoEmotionsCoSRec
@@ -99,6 +106,9 @@ def build_cosrec_emotions(
         batch_size=batch_size,
     )
 
+    if force and emo._base_dir().exists():
+        shutil.rmtree(emo._base_dir())
+
     emo.build(
         ds,
         intent_type=intent_type,
@@ -112,7 +122,7 @@ def build_cosrec_emotions(
 def build_emotions(
     cache_root: Path | str = "./cache",
     dataset: str = "all",
-    device: str | int = -1,
+    device: str | int = "auto",
     top_k: Optional[int | str] = 5,
     truncation: bool = True,
     resolve_movie_titles: bool = True,
@@ -123,6 +133,7 @@ def build_emotions(
     min_relevance: int = 1,
     max_new: Optional[int] = None,
     every: int = 200,
+    force: bool = False,
 ) -> None:
     dataset = str(dataset or "all").strip().lower()
     if dataset in {"redial", "all"}:
@@ -137,6 +148,7 @@ def build_emotions(
             splits=splits,
             max_new=max_new,
             every=every,
+            force=force,
         )
     if dataset in {"cosrec", "all"}:
         build_cosrec_emotions(
@@ -150,4 +162,5 @@ def build_emotions(
             min_relevance=min_relevance,
             max_new=max_new,
             every=25 if every is None else every,
+            force=force,
         )

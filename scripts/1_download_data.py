@@ -61,11 +61,12 @@ def download_redial():
         raise FileNotFoundError(f"Expected ReDial zip not found: {redial_zip}")
 
     data_dir = redial / "data"
+    print(data_dir)
     if data_dir.exists():
         echo("ReDial dataset already extracted, skipping unzip")
     else:
         echo("Extracting ReDial dataset")
-        run(f"unzip -o {redial_zip} -d {redial}")
+        run(f"unzip -o {redial_zip} -d ./{data_dir}")
 
 def download_cosrec():
     cosrec = BASE / "cosrec"

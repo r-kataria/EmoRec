@@ -1,35 +1,27 @@
 from __future__ import annotations
 
 import json
+import statistics
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
+from dataset.amazon_reviews import AmazonReviews2023Index
 from dataset.cosrec import CoSRecRecEpisode, safe_id
-from emotion.go_emotions_base import GoEmotionsBase
 
 
-class GoEmotionsCoSRec(GoEmotionsBase):
+class RatingBiasCoSRec:
     def __init__(
         self,
         cache_root: Path | str = "./cache",
-        device: Any = -1,
-        top_k: int = 5,
-        truncation: bool = True,
-        max_length: Optional[int] = None,
-        batch_size: Optional[int] = None,
+        amazon_index: Optional[AmazonReviews2023Index] = None,
     ):
-        super().__init__(
-            cache_root=cache_root,
-            device=device,
-            top_k=top_k,
-            truncation=truncation,
-            max_length=max_length,
-            batch_size=batch_size,
-        )
+        self.cache_root = Path(cache_root)
+        self.amazon = amazon_index or AmazonReviews2023Index(cache_root=self.cache_root)
+        self.amazon.ensure_index()
 
     def _base_dir(self) -> Path:
-        return self.cache_root / "emotion" / "go_emotions" / "cosrec" / self._top_dir() / "curated"
+        return self.cache_root / "bias" / "rating" / "cosrec" / "amazon_2023" / "curated"
 
     def _ep_path(self, ep: CoSRecRecEpisode) -> Path:
         return self._base_dir() / f"{safe_id(ep.topic_id)}.json"
@@ -42,11 +34,53 @@ class GoEmotionsCoSRec(GoEmotionsBase):
         if p.exists():
             with open(p, "r", encoding="utf-8") as f:
                 return json.load(f)
+        rec = self._compute(ep)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(rec, f, ensure_ascii=False)
+        return rec
 
-        text = self._coerce_text(ep.next_user_text)
-        preds = self._predict_texts([text])[0]
+    def _compute(self, ep: CoSRecRecEpisode) -> Dict[str, Any]:
+        asins = [str(a) for a, _ in ep.qrels]
+        rels = [int(r) for _, r in ep.qrels]
 
-        rec = {
+        ratings: List[float] = []
+        pcts: List[float] = []
+        missing: List[str] = []
+
+        for asin in asins:
+            meta = self.amazon.get(asin)
+            if not meta:
+                missing.append(asin)
+                continue
+            val = self.amazon.rating_value(meta)
+            if val is None:
+                missing.append(asin)
+                continue
+            ratings.append(float(val))
+            pcts.append(float(self.amazon.rating_percentile(float(val))))
+
+        rating_obj = None
+        if ratings:
+            mean_r = float(sum(ratings) / len(ratings))
+            med_r = float(statistics.median(ratings))
+            mean_pct = float(sum(pcts) / len(pcts)) if pcts else None
+            rating_obj = {
+                "ratings": ratings,
+                "percentiles": pcts,
+                "mean_rating": mean_r,
+                "median_rating": med_r,
+                "mean_percentile": mean_pct,
+            }
+
+        summary = {
+            "num_items_total": int(len(asins)),
+            "num_items_mapped": int(len(ratings)),
+            "mean_rating_all": float(sum(ratings) / len(ratings)) if ratings else None,
+            "mean_percentile_all": float(sum(pcts) / len(pcts)) if pcts else None,
+        }
+
+        return {
             "dataset": "cosrec",
             "partition": "curated",
             "topic_id": ep.topic_id,
@@ -56,16 +90,12 @@ class GoEmotionsCoSRec(GoEmotionsBase):
             "utterance_idx": ep.utterance_idx,
             "intent_type": ep.intent_type,
             "created_at_unix": time.time(),
-            "model": self.MODEL,
-            "top_k": self.top_k,
-            "emotion": preds,
-            "next_user_text": text,
+            "catalogue": "amazon_2023",
+            "qrels": [{"asin": a, "relevance": r} for a, r in zip(asins, rels)],
+            "missing_asins": missing,
+            "rating": rating_obj,
+            "summary": summary,
         }
-
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(rec, f, ensure_ascii=False)
-        return rec
 
     def build(
         self,
@@ -83,7 +113,7 @@ class GoEmotionsCoSRec(GoEmotionsBase):
 
         for ep in ds.iter_rec_episodes(
             min_relevance=min_relevance,
-            emotion=self,
+            bias=self,
         ):
             if intent_type and ep.intent_type != intent_type:
                 continue
@@ -100,7 +130,7 @@ class GoEmotionsCoSRec(GoEmotionsBase):
                     with open(progress_p, "w", encoding="utf-8") as f:
                         json.dump(
                             {
-                                "signal": "emotion",
+                                "bias": "rating",
                                 "dataset": "cosrec",
                                 "partition": "curated",
                                 "processed_episodes": processed,
@@ -111,11 +141,11 @@ class GoEmotionsCoSRec(GoEmotionsBase):
                             ensure_ascii=False,
                         )
                 print(
-                    f"[emotion:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+                    f"[bias:rating:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
                     flush=True,
                 )
 
         print(
-            f"[emotion:cosrec] done processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+            f"[bias:rating:cosrec] done processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
             flush=True,
         )

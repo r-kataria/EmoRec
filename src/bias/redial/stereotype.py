@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from dataset.redial import ReDialConversation, ReDialDataset, get_speaker, safe_id
 from bias.stereotype_base import StereotypeBiasBase
 
+# Labels: LABEL_0 = Non-biased, LABEL_1 = Biased.
 
 class StereotypeBiasReDial(StereotypeBiasBase):
     def _base_dir(self) -> Path:
@@ -94,20 +95,30 @@ class StereotypeBiasReDial(StereotypeBiasBase):
                 if max_new is not None and computed >= max_new:
                     break
 
-            if progress_p is not None and every and (processed % every == 0):
-                progress_p.parent.mkdir(parents=True, exist_ok=True)
-                with open(progress_p, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "bias": "stereotype",
-                            "model": self.MODEL,
-                            "tokenizer": self.TOKENIZER,
-                            "top_k": self.top_k,
-                            "split": split,
-                            "processed_conversations": processed,
-                            "computed_new_conversations": computed,
-                            "elapsed_s": time.time() - t0,
-                        },
-                        f,
-                        ensure_ascii=False,
-                    )
+            if every and (processed % every == 0):
+                if progress_p is not None:
+                    progress_p.parent.mkdir(parents=True, exist_ok=True)
+                    with open(progress_p, "w", encoding="utf-8") as f:
+                        json.dump(
+                            {
+                                "bias": "stereotype",
+                                "model": self.MODEL,
+                                "tokenizer": self.TOKENIZER,
+                                "top_k": self.top_k,
+                                "split": split,
+                                "processed_conversations": processed,
+                                "computed_new_conversations": computed,
+                                "elapsed_s": time.time() - t0,
+                            },
+                            f,
+                            ensure_ascii=False,
+                        )
+                print(
+                    f"[bias:stereotype:redial] split={split} processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+                    flush=True,
+                )
+
+        print(
+            f"[bias:stereotype:redial] split={split} done processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+            flush=True,
+        )

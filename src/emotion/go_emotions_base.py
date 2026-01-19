@@ -12,7 +12,7 @@ class GoEmotionsBase:
     def __init__(
         self,
         cache_root: Path | str = "./cache",
-        device: Any = -1,
+        device: Any = "auto",
         top_k: Optional[int] = 5,
         truncation: bool = True,
         max_length: Optional[int] = None,
@@ -22,6 +22,7 @@ class GoEmotionsBase:
         self.top_k = None if top_k is None else int(top_k)
         self.batch_size = int(batch_size) if batch_size else None
 
+        device = self._resolve_device(device)
         pipe_kwargs = {
             "task": "text-classification",
             "model": self.MODEL,
@@ -35,6 +36,25 @@ class GoEmotionsBase:
 
     def _top_dir(self) -> str:
         return f"top{self.top_k}" if self.top_k is not None else "top_all"
+
+    @staticmethod
+    def _resolve_device(device: Any) -> Any:
+        if device is None:
+            mode = "auto"
+        elif isinstance(device, str):
+            mode = device.strip().lower()
+        else:
+            mode = ""
+
+        if mode in {"auto", "mps"}:
+            try:
+                import torch  # type: ignore
+            except Exception:
+                return -1 if mode == "auto" else device
+            if hasattr(torch, "device") and torch.backends.mps.is_available():
+                return torch.device("mps")
+            return -1 if mode == "auto" else device
+        return device
 
     @staticmethod
     def _coerce_text(value: Any) -> str:

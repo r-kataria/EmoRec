@@ -17,7 +17,7 @@ class RedundancyBias:
         self.ml.ensure_rating_counts()
 
     def _base_dir(self) -> Path:
-        return self.cache_root / "bias" / "redundancy" / "ml-25m"
+        return self.cache_root / "bias" / "redundancy" / "redial" / "ml-25m"
 
     def _conv_path(self, conv: ReDialConversation) -> Path:
         return self._base_dir() / conv.split / f"{safe_id(conv.conversation_id)}.json"

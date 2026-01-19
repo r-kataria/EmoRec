@@ -46,7 +46,7 @@ class GenreBias:
         self.baseline = self.ml.genre_baseline()
 
     def _base_dir(self) -> Path:
-        return self.cache_root / "bias" / "genre" / "ml-25m"
+        return self.cache_root / "bias" / "genre" / "redial" / "ml-25m"
 
     def _conv_path(self, conv: ReDialConversation) -> Path:
         return self._base_dir() / conv.split / f"{safe_id(conv.conversation_id)}.json"

@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 from dataset.cosrec import CoSRecRecEpisode, safe_id
 from bias.stereotype_base import StereotypeBiasBase
 
+# Labels: LABEL_0 = Non-biased, LABEL_1 = Biased.
 
 class StereotypeBiasCoSRec(StereotypeBiasBase):
     def _base_dir(self) -> Path:
@@ -78,18 +79,28 @@ class StereotypeBiasCoSRec(StereotypeBiasBase):
                 if max_new is not None and computed >= max_new:
                     break
 
-            if progress_p is not None and every and (processed % every == 0):
-                progress_p.parent.mkdir(parents=True, exist_ok=True)
-                with open(progress_p, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "bias": "stereotype",
-                            "dataset": "cosrec",
-                            "partition": "curated",
-                            "processed_episodes": processed,
-                            "computed_new": computed,
-                            "elapsed_s": time.time() - t0,
-                        },
-                        f,
-                        ensure_ascii=False,
-                    )
+            if every and (processed % every == 0):
+                if progress_p is not None:
+                    progress_p.parent.mkdir(parents=True, exist_ok=True)
+                    with open(progress_p, "w", encoding="utf-8") as f:
+                        json.dump(
+                            {
+                                "bias": "stereotype",
+                                "dataset": "cosrec",
+                                "partition": "curated",
+                                "processed_episodes": processed,
+                                "computed_new": computed,
+                                "elapsed_s": time.time() - t0,
+                            },
+                            f,
+                            ensure_ascii=False,
+                        )
+                print(
+                    f"[bias:stereotype:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+                    flush=True,
+                )
+
+        print(
+            f"[bias:stereotype:cosrec] done processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+            flush=True,
+        )
