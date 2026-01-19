@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import subprocess
-import sys
 from pathlib import Path
 
 def run(cmd: str):
@@ -12,6 +11,8 @@ def echo(msg: str):
 
 BASE = Path("cache/datasets")
 
+
+# Download helpers
 def ensure_dir(path: Path):
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
@@ -47,31 +48,39 @@ def untar(tar_path: Path, out_dir: Path):
         echo(f"Extracting {tar_path}")
         run(f"tar -xvf {tar_path} -C {out_dir}")
 
-def main():
-    ensure_dir(BASE)
+# Dataset downloaders
 
-    # --------------------
-    # Git repos
-    # --------------------
+def download_redial():
     redial = BASE / "redial"
-    cosrec = BASE / "cosrec"
-
     git_clone("https://github.com/ReDialData/website", redial)
+
+    redial_zip = redial / "redial_dataset.zip"
+    if not redial_zip.exists():
+        raise FileNotFoundError(f"Expected ReDial zip not found: {redial_zip}")
+
+    data_dir = redial / "data"
+    if data_dir.exists():
+        echo("ReDial dataset already extracted, skipping unzip")
+    else:
+        echo("Extracting ReDial dataset")
+        run(f"unzip -o {redial_zip} -d {redial}")
+
+def download_cosrec():
+    cosrec = BASE / "cosrec"
     git_clone("https://github.com/CAMEO-22/CoSRec", cosrec)
 
-    # ReDial: checkout data branch + unzip
-    redial_zip = redial / "redial_dataset.zip"
-    unzip(redial_zip, redial)
-
-    # MovieLens 25M
+def download_movielens():
     ml_dir = BASE / "movielens/ml-25m"
     ensure_dir(ml_dir)
 
     ml_zip = ml_dir / "ml-25m.zip"
-    download("https://files.grouplens.org/datasets/movielens/ml-25m.zip", ml_zip)
+    download(
+        "https://files.grouplens.org/datasets/movielens/ml-25m.zip",
+        ml_zip,
+    )
     unzip(ml_zip, ml_dir)
 
-    # Amazon Reviews 2023
+def download_amazon_2023():
     amazon = BASE / "amazon_2023"
     ensure_dir(amazon)
 
@@ -108,7 +117,7 @@ def main():
     else:
         echo("Amazon review_categories exists, skipping")
 
-    # MS MARCO
+def download_msmarco():
     msmarco = BASE / "msmarco"
     ensure_dir(msmarco)
 
@@ -119,7 +128,16 @@ def main():
     )
     untar(msmarco_tar, msmarco)
 
+# Main
+
+def download_all():
+    ensure_dir(BASE)
+    download_redial()
+    download_cosrec()
+    download_movielens()
+    download_amazon_2023()
+    download_msmarco()
     echo("All data downloaded!!")
 
 if __name__ == "__main__":
-    main()
+    download_all()
