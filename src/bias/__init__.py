@@ -9,7 +9,6 @@ from .cosrec.exposure import ExposureConcentrationCoSRec
 from .cosrec.genre import GenreBiasCoSRec
 from .cosrec.popularity import PopularityBiasCoSRec
 from .cosrec.episode_popularity import EpisodePopularityBiasCoSRec
-from .cosrec.rating import RatingBiasCoSRec
 from .cosrec.redundancy import RedundancyBiasCoSRec
 from .cosrec.stereotype import StereotypeBiasCoSRec
 
@@ -25,7 +24,6 @@ __all__ = [
     "EpisodePopularityBiasCoSRec",
     "RedundancyBiasCoSRec",
     "GenreBiasCoSRec",
-    "RatingBiasCoSRec",
     "ExposureConcentrationCoSRec",
     "StereotypeBiasCoSRec",
 ]

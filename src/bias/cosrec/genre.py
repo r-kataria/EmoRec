@@ -4,11 +4,12 @@ import json
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from dataset.amazon_reviews import AmazonReviews2023Index
 from dataset.cosrec import CoSRecRecEpisode, safe_id
 from bias.metrics import entropy, js_divergence_dict
+from utils.progress import write_progress
 
 
 class GenreBiasCoSRec:
@@ -36,13 +37,10 @@ class GenreBiasCoSRec:
         if p.exists():
             with open(p, "r", encoding="utf-8") as f:
                 return json.load(f)
-        rec = self._compute(ep)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(rec, f, ensure_ascii=False)
-        return rec
 
-    def _dist_from_asins(self, asins: List[str]) -> Dict[str, float]:
+        asins = [str(a) for a, _ in ep.qrels]
+        rels = [int(r) for _, r in ep.qrels]
+
         counts = defaultdict(int)
         total = 0
         for asin in asins:
@@ -55,15 +53,8 @@ class GenreBiasCoSRec:
             for c in cats:
                 counts[str(c)] += 1
                 total += 1
-        if total == 0:
-            return {}
-        return {c: counts[c] / total for c in counts}
+        dist = {c: counts[c] / total for c in counts} if total else {}
 
-    def _compute(self, ep: CoSRecRecEpisode) -> Dict[str, Any]:
-        asins = [str(a) for a, _ in ep.qrels]
-        rels = [int(r) for _, r in ep.qrels]
-
-        dist = self._dist_from_asins(asins)
         jsd = js_divergence_dict(dist, self.baseline) if dist and self.baseline else None
         ent = entropy(dist) if dist else 0.0
 
@@ -76,7 +67,7 @@ class GenreBiasCoSRec:
             "category_coverage": int(len(dist)),
         }
 
-        return {
+        rec = {
             "dataset": "cosrec",
             "partition": "curated",
             "topic_id": ep.topic_id,
@@ -90,6 +81,11 @@ class GenreBiasCoSRec:
             "qrels": [{"asin": a, "relevance": r} for a, r in zip(asins, rels)],
             "summary": summary,
         }
+
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(rec, f, ensure_ascii=False)
+        return rec
 
     def build(
         self,
@@ -119,21 +115,14 @@ class GenreBiasCoSRec:
                     break
 
             if every and (processed % every == 0):
-                if progress_p is not None:
-                    progress_p.parent.mkdir(parents=True, exist_ok=True)
-                    with open(progress_p, "w", encoding="utf-8") as f:
-                        json.dump(
-                            {
-                                "bias": "genre",
-                                "dataset": "cosrec",
-                                "partition": "curated",
-                                "processed_episodes": processed,
-                                "computed_new": computed,
-                                "elapsed_s": time.time() - t0,
-                            },
-                            f,
-                            ensure_ascii=False,
-                        )
+                write_progress(progress_p, {
+                    "bias": "genre",
+                    "dataset": "cosrec",
+                    "partition": "curated",
+                    "processed_episodes": processed,
+                    "computed_new": computed,
+                    "elapsed_s": time.time() - t0,
+                })
                 print(
                     f"[bias:genre:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
                     flush=True,

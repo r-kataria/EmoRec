@@ -8,7 +8,8 @@ from typing import Any, Dict, Optional
 
 from dataset.movielens import MovieLens25M
 from dataset.redial import extract_movie_ids, get_speaker
-from bias.metrics import gini, hhi
+from bias.metrics import gini
+from utils.progress import write_progress
 
 
 class ExposureConcentration:
@@ -60,21 +61,15 @@ class ExposureConcentration:
                         continue
                     counts[int(mid)] += 1
 
-            if progress_p is not None and every and (processed % every == 0):
-                progress_p.parent.mkdir(parents=True, exist_ok=True)
-                with open(progress_p, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "bias": "exposure_concentration",
-                            "split": split,
-                            "processed_conversations": processed,
-                            "unique_items_so_far": len(counts),
-                            "total_mentions_so_far": sum(counts.values()),
-                            "elapsed_s": time.time() - t0,
-                        },
-                        f,
-                        ensure_ascii=False,
-                    )
+            if every and (processed % every == 0):
+                write_progress(progress_p, {
+                    "bias": "exposure_concentration",
+                    "split": split,
+                    "processed_conversations": processed,
+                    "unique_items_so_far": len(counts),
+                    "total_mentions_so_far": sum(counts.values()),
+                    "elapsed_s": time.time() - t0,
+                })
 
         freqs = list(counts.values())
         total_mentions = int(sum(freqs))
@@ -98,7 +93,6 @@ class ExposureConcentration:
             "top50_share": top_share(50),
             "top100_share": top_share(100),
             "gini": gini(freqs),
-            "hhi": hhi(freqs),
         }
 
         out_p.parent.mkdir(parents=True, exist_ok=True)

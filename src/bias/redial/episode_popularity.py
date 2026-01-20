@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from dataset.movielens import MovieLens25M
 from dataset.redial import ReDialConversation, extract_movie_ids, get_speaker, safe_id
 from bias.metrics import js_similarity, mean, popularity_bins, rank_utility
+from utils.progress import write_progress
 
 
 class EpisodePopularityBias:
@@ -36,25 +37,7 @@ class EpisodePopularityBias:
         if p.exists():
             with open(p, "r", encoding="utf-8") as f:
                 return json.load(f)
-        rec = self._compute(conv)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(rec, f, ensure_ascii=False)
-        return rec
 
-    def _map_redial_ids(self, conv: ReDialConversation, redial_ids: List[str]) -> List[int]:
-        out: List[int] = []
-        for rid in redial_ids:
-            title = (conv.movie_mentions or {}).get(str(rid))
-            if not title:
-                continue
-            mid = self.ml.map_title(title)
-            if mid is None:
-                continue
-            out.append(int(mid))
-        return out
-
-    def _compute(self, conv: ReDialConversation) -> Dict[str, Any]:
         turns: List[Dict[str, Any]] = []
         prev_bins: Optional[List[float]] = None
 
@@ -137,7 +120,7 @@ class EpisodePopularityBias:
             "uiop_similarity_mean": mean(uiop_vals),
         }
 
-        return {
+        rec = {
             "dataset": "redial",
             "split": conv.split,
             "conversationId": conv.conversation_id,
@@ -147,6 +130,23 @@ class EpisodePopularityBias:
             "turns": turns,
             "summary": summary,
         }
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(rec, f, ensure_ascii=False)
+        return rec
+
+    def _map_redial_ids(self, conv: ReDialConversation, redial_ids: List[str]) -> List[int]:
+        out: List[int] = []
+        for rid in redial_ids:
+            title = (conv.movie_mentions or {}).get(str(rid))
+            if not title:
+                continue
+            mid = self.ml.map_title(title)
+            if mid is None:
+                continue
+            out.append(int(mid))
+        return out
+
 
     def build(
         self,
@@ -171,20 +171,14 @@ class EpisodePopularityBias:
                 if max_new is not None and computed >= max_new:
                     break
 
-            if progress_p is not None and every and (processed % every == 0):
-                progress_p.parent.mkdir(parents=True, exist_ok=True)
-                with open(progress_p, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "bias": "episode_popularity",
-                            "split": split,
-                            "processed_conversations": processed,
-                            "computed_new": computed,
-                            "elapsed_s": time.time() - t0,
-                        },
-                        f,
-                        ensure_ascii=False,
-                    )
+            if every and (processed % every == 0):
+                write_progress(progress_p, {
+                    "bias": "episode_popularity",
+                    "split": split,
+                    "processed_conversations": processed,
+                    "computed_new": computed,
+                    "elapsed_s": time.time() - t0,
+                })
 
         print(
             f"[bias:episode_popularity:redial] split={split} done processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from dataset.amazon_reviews import AmazonReviews2023Index
 from dataset.cosrec import CoSRecRecEpisode, safe_id
+from utils.progress import write_progress
 
 
 class PopularityBiasCoSRec:
@@ -35,13 +36,7 @@ class PopularityBiasCoSRec:
         if p.exists():
             with open(p, "r", encoding="utf-8") as f:
                 return json.load(f)
-        rec = self._compute(ep)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(rec, f, ensure_ascii=False)
-        return rec
 
-    def _compute(self, ep: CoSRecRecEpisode) -> Dict[str, Any]:
         asins = [str(a) for a, _ in ep.qrels]
         rels = [int(r) for _, r in ep.qrels]
 
@@ -86,7 +81,7 @@ class PopularityBiasCoSRec:
             "mean_percentile_all": float(sum(pcts) / len(pcts)) if pcts else None,
         }
 
-        return {
+        rec = {
             "dataset": "cosrec",
             "partition": "curated",
             "topic_id": ep.topic_id,
@@ -102,6 +97,10 @@ class PopularityBiasCoSRec:
             "popularity": pop_obj,
             "summary": summary,
         }
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(rec, f, ensure_ascii=False)
+        return rec
 
     def build(
         self,
@@ -131,21 +130,14 @@ class PopularityBiasCoSRec:
                     break
 
             if every and (processed % every == 0):
-                if progress_p is not None:
-                    progress_p.parent.mkdir(parents=True, exist_ok=True)
-                    with open(progress_p, "w", encoding="utf-8") as f:
-                        json.dump(
-                            {
-                                "bias": "popularity",
-                                "dataset": "cosrec",
-                                "partition": "curated",
-                                "processed_episodes": processed,
-                                "computed_new": computed,
-                                "elapsed_s": time.time() - t0,
-                            },
-                            f,
-                            ensure_ascii=False,
-                        )
+                write_progress(progress_p, {
+                    "bias": "popularity",
+                    "dataset": "cosrec",
+                    "partition": "curated",
+                    "processed_episodes": processed,
+                    "computed_new": computed,
+                    "elapsed_s": time.time() - t0,
+                })
                 print(
                     f"[bias:popularity:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
                     flush=True,

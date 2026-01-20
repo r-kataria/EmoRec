@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 
 from dataset.cosrec import CoSRecRecEpisode, safe_id
 from bias.stereotype_base import StereotypeBiasBase
+from utils.progress import write_progress
 
 # Labels: LABEL_0 = Non-biased, LABEL_1 = Biased.
 
@@ -80,21 +81,14 @@ class StereotypeBiasCoSRec(StereotypeBiasBase):
                     break
 
             if every and (processed % every == 0):
-                if progress_p is not None:
-                    progress_p.parent.mkdir(parents=True, exist_ok=True)
-                    with open(progress_p, "w", encoding="utf-8") as f:
-                        json.dump(
-                            {
-                                "bias": "stereotype",
-                                "dataset": "cosrec",
-                                "partition": "curated",
-                                "processed_episodes": processed,
-                                "computed_new": computed,
-                                "elapsed_s": time.time() - t0,
-                            },
-                            f,
-                            ensure_ascii=False,
-                        )
+                write_progress(progress_p, {
+                    "bias": "stereotype",
+                    "dataset": "cosrec",
+                    "partition": "curated",
+                    "processed_episodes": processed,
+                    "computed_new": computed,
+                    "elapsed_s": time.time() - t0,
+                })
                 print(
                     f"[bias:stereotype:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
                     flush=True,

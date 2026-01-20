@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from dataset.redial import ReDialConversation, ReDialDataset, get_speaker, safe_id
 from bias.stereotype_base import StereotypeBiasBase
+from utils.progress import write_progress
 
 # Labels: LABEL_0 = Non-biased, LABEL_1 = Biased.
 
@@ -26,13 +27,6 @@ class StereotypeBiasReDial(StereotypeBiasBase):
             with open(p, "r", encoding="utf-8") as f:
                 return json.load(f)
 
-        record = self._compute(conv)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(record, f, ensure_ascii=False)
-        return record
-
-    def _compute(self, conv: ReDialConversation) -> Dict[str, Any]:
         speakers: List[str] = []
         rec_texts: List[str] = []
         rec_indices: List[int] = []
@@ -50,7 +44,7 @@ class StereotypeBiasReDial(StereotypeBiasBase):
         preds = self._predict_texts(rec_texts)
         by_idx = {rec_indices[i]: preds[i] for i in range(len(rec_indices))}
 
-        return {
+        record = {
             "dataset": "redial",
             "split": conv.split,
             "conversationId": conv.conversation_id,
@@ -69,6 +63,10 @@ class StereotypeBiasReDial(StereotypeBiasBase):
                 for i in range(len(conv.messages))
             ],
         }
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(record, f, ensure_ascii=False)
+        return record
 
     def build(
         self,
@@ -96,23 +94,16 @@ class StereotypeBiasReDial(StereotypeBiasBase):
                     break
 
             if every and (processed % every == 0):
-                if progress_p is not None:
-                    progress_p.parent.mkdir(parents=True, exist_ok=True)
-                    with open(progress_p, "w", encoding="utf-8") as f:
-                        json.dump(
-                            {
-                                "bias": "stereotype",
-                                "model": self.MODEL,
-                                "tokenizer": self.TOKENIZER,
-                                "top_k": self.top_k,
-                                "split": split,
-                                "processed_conversations": processed,
-                                "computed_new_conversations": computed,
-                                "elapsed_s": time.time() - t0,
-                            },
-                            f,
-                            ensure_ascii=False,
-                        )
+                write_progress(progress_p, {
+                    "bias": "stereotype",
+                    "model": self.MODEL,
+                    "tokenizer": self.TOKENIZER,
+                    "top_k": self.top_k,
+                    "split": split,
+                    "processed_conversations": processed,
+                    "computed_new_conversations": computed,
+                    "elapsed_s": time.time() - t0,
+                })
                 print(
                     f"[bias:stereotype:redial] split={split} processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
                     flush=True,

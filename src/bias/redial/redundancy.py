@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from dataset.movielens import MovieLens25M
 from dataset.redial import ReDialConversation, extract_movie_ids, get_speaker, safe_id
+from utils.progress import write_progress
 
 
 class RedundancyBias:
@@ -30,13 +31,7 @@ class RedundancyBias:
         if p.exists():
             with open(p, "r", encoding="utf-8") as f:
                 return json.load(f)
-        rec = self._compute(conv)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(rec, f, ensure_ascii=False)
-        return rec
 
-    def _compute(self, conv: ReDialConversation) -> Dict[str, Any]:
         seen = set()
         all_items: List[int] = []
         turns: List[Dict[str, Any]] = []
@@ -87,7 +82,7 @@ class RedundancyBias:
             "repeated_item_counts": {str(mid): int(cnt) for mid, cnt in c.items() if cnt > 1},
         }
 
-        return {
+        rec = {
             "dataset": "redial",
             "split": conv.split,
             "conversationId": conv.conversation_id,
@@ -96,6 +91,10 @@ class RedundancyBias:
             "turns": turns,
             "summary": summary,
         }
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(rec, f, ensure_ascii=False)
+        return rec
 
     def build(
         self,
@@ -120,17 +119,11 @@ class RedundancyBias:
                 if max_new is not None and computed >= max_new:
                     break
 
-            if progress_p is not None and every and (processed % every == 0):
-                progress_p.parent.mkdir(parents=True, exist_ok=True)
-                with open(progress_p, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "bias": "redundancy",
-                            "split": split,
-                            "processed_conversations": processed,
-                            "computed_new_conversations": computed,
-                            "elapsed_s": time.time() - t0,
-                        },
-                        f,
-                        ensure_ascii=False,
-                    )
+            if every and (processed % every == 0):
+                write_progress(progress_p, {
+                    "bias": "redundancy",
+                    "split": split,
+                    "processed_conversations": processed,
+                    "computed_new_conversations": computed,
+                    "elapsed_s": time.time() - t0,
+                })

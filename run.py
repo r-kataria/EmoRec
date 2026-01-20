@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+os.chdir(ROOT)
 sys.path.insert(0, str(ROOT / "src"))
 
 
@@ -20,83 +22,38 @@ def _load_module(path: Path, name: str):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Run emotion (seeker responses) then bias (recommendations) for ReDial/CoSRec."
-    )
+    parser = argparse.ArgumentParser(description="Run the EmoRecc pipeline.")
     parser.add_argument("--download", action="store_true")
-    parser.add_argument("--emotions", action="store_true")
-    parser.add_argument("--biases", action="store_true")
-    parser.add_argument("--all", action="store_true")
-    parser.add_argument("--cache-root", default=str(ROOT / "cache"))
-    parser.add_argument("--device", default="auto")
-    parser.add_argument("--top-k", default="5")
-    parser.add_argument("--batch-size", type=int, default=None)
-    parser.add_argument("--max-length", type=int, default=None)
-    parser.add_argument("--no-truncation", action="store_true")
-    parser.add_argument("--raw-movie-tags", action="store_true")
-    parser.add_argument("--splits", default="train,test")
-    parser.add_argument("--intent-type", default="recommendation")
-    parser.add_argument("--min-relevance", type=int, default=1)
-    parser.add_argument("--max-new", type=int, default=None)
-    parser.add_argument("--every", type=int, default=200)
-    parser.add_argument("--force", action="store_true")
-    parser.add_argument("--emotion-dataset", choices=["redial", "cosrec", "all"], default="all")
-    parser.add_argument("--bias-dataset", choices=["redial", "cosrec", "all"], default="all")
-    parser.add_argument("--no-cosrec-turn-emotions", action="store_true")
+    parser.add_argument("--build_emotion", action="store_true")
+    parser.add_argument("--build_bias", action="store_true")
+    parser.add_argument("--stats", action="store_true")
     args = parser.parse_args()
 
-    if args.all:
+    if not (args.download or args.build_emotion or args.build_bias or args.stats):
         args.download = True
-        args.emotions = True
-        args.biases = True
+        args.build_emotion = True
+        args.build_bias = True
+        args.stats = True
 
-    if not (args.download or args.emotions or args.biases):
-        args.emotions = True
-        args.biases = True
-
-    cache_root = Path(args.cache_root)
+    cache_root = ROOT / "cache"
+    results_dir = ROOT / "results"
     scripts_dir = ROOT / "scripts"
 
     if args.download:
         dl_mod = _load_module(scripts_dir / "1_download_data.py", "download_data_module")
         dl_mod.download_all()
 
-    if args.emotions:
+    if args.build_emotion:
         emo_mod = _load_module(scripts_dir / "2_build_emotions.py", "build_emotions_module")
-        emo_mod.build_emotions(
-            cache_root=cache_root,
-            dataset=args.emotion_dataset,
-            device=args.device,
-            top_k=args.top_k,
-            truncation=not args.no_truncation,
-            resolve_movie_titles=not args.raw_movie_tags,
-            max_length=args.max_length,
-            batch_size=args.batch_size,
-            splits=args.splits,
-            intent_type=args.intent_type,
-            min_relevance=args.min_relevance,
-            max_new=args.max_new,
-            every=args.every,
-            include_cosrec_turns=not args.no_cosrec_turn_emotions,
-            force=args.force,
-        )
+        emo_mod.build_emotions(cache_root=cache_root)
 
-    if args.biases:
+    if args.build_bias:
         bias_mod = _load_module(scripts_dir / "3_build_biases.py", "build_biases_module")
-        bias_mod.build_biases(
-            cache_root=cache_root,
-            dataset=args.bias_dataset,
-            device=args.device,
-            truncation=not args.no_truncation,
-            max_length=args.max_length,
-            batch_size=args.batch_size,
-            splits=args.splits,
-            intent_type=args.intent_type,
-            min_relevance=args.min_relevance,
-            max_new=args.max_new,
-            every=args.every,
-            force=args.force,
-        )
+        bias_mod.build_biases(cache_root=cache_root)
+
+    if args.stats:
+        stats_mod = _load_module(scripts_dir / "4_analyze_stats.py", "analyze_stats_module")
+        stats_mod.analyze_stats(cache_root=cache_root, out_dir=results_dir)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from dataset.amazon_reviews import AmazonReviews2023Index
 from dataset.cosrec import CoSRecRecEpisode, safe_id
 from bias.metrics import js_similarity, mean, mean_bins, popularity_bins, rank_utility
+from utils.progress import write_progress
 
 
 class EpisodePopularityBiasCoSRec:
@@ -167,21 +168,14 @@ class EpisodePopularityBiasCoSRec:
                             break
 
                     if every and (processed % every == 0):
-                        if progress_p is not None:
-                            progress_p.parent.mkdir(parents=True, exist_ok=True)
-                            with open(progress_p, "w", encoding="utf-8") as f:
-                                json.dump(
-                                    {
-                                        "bias": "episode_popularity",
-                                        "dataset": "cosrec",
-                                        "partition": "curated",
-                                        "processed_episodes": processed,
-                                        "computed_new": computed,
-                                        "elapsed_s": time.time() - t0,
-                                    },
-                                    f,
-                                    ensure_ascii=False,
-                                )
+                        write_progress(progress_p, {
+                            "bias": "episode_popularity",
+                            "dataset": "cosrec",
+                            "partition": "curated",
+                            "processed_episodes": processed,
+                            "computed_new": computed,
+                            "elapsed_s": time.time() - t0,
+                        })
                         print(
                             f"[bias:episode_popularity:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
                             flush=True,

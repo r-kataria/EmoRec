@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from dataset.movielens import MovieLens25M
 from dataset.redial import ReDialConversation, extract_movie_ids, get_speaker, safe_id
+from utils.progress import write_progress
 
 
 class PopularityBias:
@@ -31,13 +32,7 @@ class PopularityBias:
         if p.exists():
             with open(p, "r", encoding="utf-8") as f:
                 return json.load(f)
-        rec = self._compute(conv)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(rec, f, ensure_ascii=False)
-        return rec
 
-    def _compute(self, conv: ReDialConversation) -> Dict[str, Any]:
         turns: List[Dict[str, Any]] = []
         all_counts: List[int] = []
         all_pcts: List[float] = []
@@ -77,7 +72,11 @@ class PopularityBias:
                 med_c = float(statistics.median(counts))
                 mean_pct = float(sum(pcts) / len(pcts))
 
-                head_share_top10 = float(sum(1 for c in counts if c >= top10_thr) / len(counts)) if top10_thr > 0 else 0.0
+                head_share_top10 = (
+                    float(sum(1 for c in counts if c >= top10_thr) / len(counts))
+                    if top10_thr > 0
+                    else 0.0
+                )
                 novelty = [float(-math.log1p(c)) for c in counts]
                 novelty_mean = float(sum(novelty) / len(novelty))
 
@@ -112,7 +111,7 @@ class PopularityBias:
             "mean_percentile_all": float(sum(all_pcts) / len(all_pcts)) if all_pcts else None,
         }
 
-        return {
+        rec = {
             "dataset": "redial",
             "split": conv.split,
             "conversationId": conv.conversation_id,
@@ -121,6 +120,10 @@ class PopularityBias:
             "turns": turns,
             "summary": summary,
         }
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(rec, f, ensure_ascii=False)
+        return rec
 
     def build(
         self,
@@ -145,17 +148,11 @@ class PopularityBias:
                 if max_new is not None and computed >= max_new:
                     break
 
-            if progress_p is not None and every and (processed % every == 0):
-                progress_p.parent.mkdir(parents=True, exist_ok=True)
-                with open(progress_p, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "bias": "popularity",
-                            "split": split,
-                            "processed_conversations": processed,
-                            "computed_new_conversations": computed,
-                            "elapsed_s": time.time() - t0,
-                        },
-                        f,
-                        ensure_ascii=False,
-                    )
+            if every and (processed % every == 0):
+                write_progress(progress_p, {
+                    "bias": "popularity",
+                    "split": split,
+                    "processed_conversations": processed,
+                    "computed_new_conversations": computed,
+                    "elapsed_s": time.time() - t0,
+                })

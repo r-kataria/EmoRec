@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from dataset.movielens import MovieLens25M
 from dataset.redial import ReDialConversation, extract_movie_ids, get_speaker, safe_id
 from bias.metrics import entropy, js_divergence_dict
+from utils.progress import write_progress
 
 
 class YearDecadeBias:
@@ -34,25 +35,7 @@ class YearDecadeBias:
         if p.exists():
             with open(p, "r", encoding="utf-8") as f:
                 return json.load(f)
-        rec = self._compute(conv)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(rec, f, ensure_ascii=False)
-        return rec
 
-    def _dist_from_labels(self, labels: List[str]) -> Dict[str, float]:
-        counts = defaultdict(int)
-        total = 0
-        for lab in labels:
-            if not lab:
-                continue
-            counts[lab] += 1
-            total += 1
-        if total == 0:
-            return {}
-        return {k: counts[k] / total for k in counts}
-
-    def _compute(self, conv: ReDialConversation) -> Dict[str, Any]:
         turns: List[Dict[str, Any]] = []
         conv_years: List[int] = []
         conv_decades: List[str] = []
@@ -140,7 +123,7 @@ class YearDecadeBias:
             "decade_coverage": int(len(conv_decade_dist)),
         }
 
-        return {
+        rec = {
             "dataset": "redial",
             "split": conv.split,
             "conversationId": conv.conversation_id,
@@ -149,6 +132,23 @@ class YearDecadeBias:
             "turns": turns,
             "summary": summary,
         }
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(rec, f, ensure_ascii=False)
+        return rec
+
+    def _dist_from_labels(self, labels: List[str]) -> Dict[str, float]:
+        counts = defaultdict(int)
+        total = 0
+        for lab in labels:
+            if not lab:
+                continue
+            counts[lab] += 1
+            total += 1
+        if total == 0:
+            return {}
+        return {k: counts[k] / total for k in counts}
+
 
     def build(
         self,
@@ -173,17 +173,11 @@ class YearDecadeBias:
                 if max_new is not None and computed >= max_new:
                     break
 
-            if progress_p is not None and every and (processed % every == 0):
-                progress_p.parent.mkdir(parents=True, exist_ok=True)
-                with open(progress_p, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "bias": "year_decade",
-                            "split": split,
-                            "processed_conversations": processed,
-                            "computed_new_conversations": computed,
-                            "elapsed_s": time.time() - t0,
-                        },
-                        f,
-                        ensure_ascii=False,
-                    )
+            if every and (processed % every == 0):
+                write_progress(progress_p, {
+                    "bias": "year_decade",
+                    "split": split,
+                    "processed_conversations": processed,
+                    "computed_new_conversations": computed,
+                    "elapsed_s": time.time() - t0,
+                })

@@ -39,13 +39,7 @@ def build_redial_emotions(
         if force:
             split_dir = emo._base_dir() / split
             clear_dir(split_dir)
-        emo.build(
-            ds,
-            split=split,
-            max_new=max_new,
-            progress_path=cache_root / f"emotion_progress_redial_{split}.json",
-            every=every,
-        )
+        emo.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"emotion_progress_redial_{split}.json", every=every)
 
 
 def build_cosrec_emotions(
@@ -78,14 +72,7 @@ def build_cosrec_emotions(
     if force:
         clear_dir(emo._base_dir())
 
-    emo.build(
-        ds,
-        intent_type=intent_type,
-        min_relevance=min_relevance,
-        max_new=max_new,
-        progress_path=cache_root / "emotion_progress_cosrec.json",
-        every=every,
-    )
+    emo.build(ds, intent_type=intent_type, min_relevance=min_relevance, max_new=max_new, progress_path=cache_root / "emotion_progress_cosrec.json", every=every)
 
 
 def build_cosrec_turn_emotions(
@@ -116,13 +103,7 @@ def build_cosrec_turn_emotions(
     if force:
         clear_dir(emo._turn_base_dir())
 
-    emo.build_turns(
-        ds,
-        partition="curated",
-        max_new=max_new,
-        progress_path=cache_root / "emotion_progress_cosrec_turns.json",
-        every=every,
-    )
+    emo.build_turns(ds, partition="curated", max_new=max_new, progress_path=cache_root / "emotion_progress_cosrec_turns.json", every=every)
 
 
 def build_emotions(

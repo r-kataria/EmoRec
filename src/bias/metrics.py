@@ -132,11 +132,3 @@ def gini(counts: Iterable[int]) -> float:
     for i, v in enumerate(vals, start=1):
         num += i * v
     return float((2.0 * num) / (n * s) - (n + 1) / n)
-
-
-def hhi(counts: Iterable[int]) -> float:
-    vals = [int(v) for v in counts if int(v) >= 0]
-    s = sum(vals)
-    if s == 0:
-        return 0.0
-    return float(sum((v / s) ** 2 for v in vals))

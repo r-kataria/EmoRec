@@ -62,55 +62,13 @@ def build_redial_biases(
                 split_dir = base_dir / split
                 clear_dir(split_dir)
 
-        pop.build(
-            ds,
-            split=split,
-            max_new=max_new,
-            progress_path=cache_root / f"bias_popularity_{split}.json",
-            every=every,
-        )
-        epi.build(
-            ds,
-            split=split,
-            max_new=max_new,
-            progress_path=cache_root / f"bias_episode_popularity_{split}.json",
-            every=every,
-        )
-        red.build(
-            ds,
-            split=split,
-            max_new=max_new,
-            progress_path=cache_root / f"bias_redundancy_{split}.json",
-            every=every,
-        )
-        gen.build(
-            ds,
-            split=split,
-            max_new=max_new,
-            progress_path=cache_root / f"bias_genre_{split}.json",
-            every=every,
-        )
-        yd.build(
-            ds,
-            split=split,
-            max_new=max_new,
-            progress_path=cache_root / f"bias_year_decade_{split}.json",
-            every=every,
-        )
-        stereo.build(
-            ds,
-            split=split,
-            max_new=max_new,
-            progress_path=cache_root / f"bias_stereotype_{split}.json",
-            every=every,
-        )
-        exp.build(
-            ds,
-            split=split,
-            force=force,
-            progress_path=cache_root / f"bias_exposure_{split}.json",
-            every=every,
-        )
+        pop.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_popularity_{split}.json", every=every)
+        epi.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_episode_popularity_{split}.json", every=every)
+        red.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_redundancy_{split}.json", every=every)
+        gen.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_genre_{split}.json", every=every)
+        yd.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_year_decade_{split}.json", every=every)
+        stereo.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_stereotype_{split}.json", every=every)
+        exp.build(ds, split=split, force=force, progress_path=cache_root / f"bias_exposure_{split}.json", every=every)
 
 
 def build_cosrec_biases(
@@ -132,7 +90,6 @@ def build_cosrec_biases(
         EpisodePopularityBiasCoSRec,
         GenreBiasCoSRec,
         PopularityBiasCoSRec,
-        RatingBiasCoSRec,
         RedundancyBiasCoSRec,
         StereotypeBiasCoSRec,
     )
@@ -144,7 +101,6 @@ def build_cosrec_biases(
 
     pop = PopularityBiasCoSRec(cache_root=cache_root, amazon_index=amazon)
     epi = EpisodePopularityBiasCoSRec(cache_root=cache_root, amazon_index=amazon)
-    rating = RatingBiasCoSRec(cache_root=cache_root, amazon_index=amazon)
     genre = GenreBiasCoSRec(cache_root=cache_root, amazon_index=amazon)
     red = RedundancyBiasCoSRec(cache_root=cache_root)
     exp = ExposureConcentrationCoSRec(cache_root=cache_root)
@@ -161,70 +117,18 @@ def build_cosrec_biases(
         for base_dir in [
             pop._base_dir(),
             epi._base_dir(),
-            rating._base_dir(),
             genre._base_dir(),
             red._base_dir(),
             stereo._base_dir(),
         ]:
             clear_dir(base_dir)
 
-    pop.build(
-        ds,
-        intent_type=intent_type,
-        min_relevance=min_relevance,
-        max_new=max_new,
-        progress_path=cache_root / "bias_popularity_cosrec.json",
-        every=every,
-    )
-    epi.build(
-        ds,
-        intent_type=intent_type,
-        min_relevance=min_relevance,
-        max_new=max_new,
-        progress_path=cache_root / "bias_episode_popularity_cosrec.json",
-        every=every,
-    )
-    rating.build(
-        ds,
-        intent_type=intent_type,
-        min_relevance=min_relevance,
-        max_new=max_new,
-        progress_path=cache_root / "bias_rating_cosrec.json",
-        every=every,
-    )
-    genre.build(
-        ds,
-        intent_type=intent_type,
-        min_relevance=min_relevance,
-        max_new=max_new,
-        progress_path=cache_root / "bias_genre_cosrec.json",
-        every=every,
-    )
-    red.build(
-        ds,
-        intent_type=intent_type,
-        min_relevance=min_relevance,
-        max_new=max_new,
-        progress_path=cache_root / "bias_redundancy_cosrec.json",
-        every=every,
-    )
-    stereo.build(
-        ds,
-        intent_type=intent_type,
-        min_relevance=min_relevance,
-        max_new=max_new,
-        progress_path=cache_root / "bias_stereotype_cosrec.json",
-        every=every,
-    )
-    exp.build(
-        ds,
-        intent_type=intent_type,
-        min_relevance=min_relevance,
-        max_new=max_new,
-        force=force,
-        progress_path=cache_root / "bias_exposure_cosrec.json",
-        every=every,
-    )
+    pop.build(ds, intent_type=intent_type, min_relevance=min_relevance, max_new=max_new, progress_path=cache_root / "bias_popularity_cosrec.json", every=every)
+    epi.build(ds, intent_type=intent_type, min_relevance=min_relevance, max_new=max_new, progress_path=cache_root / "bias_episode_popularity_cosrec.json", every=every)
+    genre.build(ds, intent_type=intent_type, min_relevance=min_relevance, max_new=max_new, progress_path=cache_root / "bias_genre_cosrec.json", every=every)
+    red.build(ds, intent_type=intent_type, min_relevance=min_relevance, max_new=max_new, progress_path=cache_root / "bias_redundancy_cosrec.json", every=every)
+    stereo.build(ds, intent_type=intent_type, min_relevance=min_relevance, max_new=max_new, progress_path=cache_root / "bias_stereotype_cosrec.json", every=every)
+    exp.build(ds, intent_type=intent_type, min_relevance=min_relevance, max_new=max_new, force=force, progress_path=cache_root / "bias_exposure_cosrec.json", every=every)
 
 
 def build_biases(

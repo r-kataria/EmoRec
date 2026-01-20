@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 
 from dataset.cosrec import CoSRecConversation, CoSRecRecEpisode, safe_id
 from emotion.go_emotions_base import GoEmotionsBase
+from utils.progress import write_progress
 
 
 class GoEmotionsCoSRec(GoEmotionsBase):
@@ -145,21 +146,14 @@ class GoEmotionsCoSRec(GoEmotionsBase):
                     break
 
             if every and (processed % every == 0):
-                if progress_p is not None:
-                    progress_p.parent.mkdir(parents=True, exist_ok=True)
-                    with open(progress_p, "w", encoding="utf-8") as f:
-                        json.dump(
-                            {
-                                "signal": "emotion",
-                                "dataset": "cosrec",
-                                "partition": "curated",
-                                "processed_episodes": processed,
-                                "computed_new": computed,
-                                "elapsed_s": time.time() - t0,
-                            },
-                            f,
-                            ensure_ascii=False,
-                        )
+                write_progress(progress_p, {
+                    "signal": "emotion",
+                    "dataset": "cosrec",
+                    "partition": "curated",
+                    "processed_episodes": processed,
+                    "computed_new": computed,
+                    "elapsed_s": time.time() - t0,
+                })
                 print(
                     f"[emotion:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
                     flush=True,
@@ -192,22 +186,15 @@ class GoEmotionsCoSRec(GoEmotionsBase):
                     break
 
             if every and (processed % every == 0):
-                if progress_p is not None:
-                    progress_p.parent.mkdir(parents=True, exist_ok=True)
-                    with open(progress_p, "w", encoding="utf-8") as f:
-                        json.dump(
-                            {
-                                "signal": "emotion",
-                                "dataset": "cosrec",
-                                "partition": partition,
-                                "scope": "all_user_turns",
-                                "processed_conversations": processed,
-                                "computed_new": computed,
-                                "elapsed_s": time.time() - t0,
-                            },
-                            f,
-                            ensure_ascii=False,
-                        )
+                write_progress(progress_p, {
+                    "signal": "emotion",
+                    "dataset": "cosrec",
+                    "partition": partition,
+                    "scope": "all_user_turns",
+                    "processed_conversations": processed,
+                    "computed_new": computed,
+                    "elapsed_s": time.time() - t0,
+                })
                 print(
                     f"[emotion:cosrec:turns] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
                     flush=True,

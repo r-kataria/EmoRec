@@ -6,7 +6,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from bias.metrics import gini, hhi
+from bias.metrics import gini
+from utils.progress import write_progress
 
 class ExposureConcentrationCoSRec:
     def __init__(self, cache_root: Path | str = "./cache"):
@@ -57,22 +58,16 @@ class ExposureConcentrationCoSRec:
             if max_new is not None and processed >= max_new:
                 break
 
-            if progress_p is not None and every and (processed % every == 0):
-                progress_p.parent.mkdir(parents=True, exist_ok=True)
-                with open(progress_p, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "bias": "exposure_concentration",
-                            "dataset": "cosrec",
-                            "partition": "curated",
-                            "processed_episodes": processed,
-                            "unique_items_so_far": len(counts),
-                            "total_mentions_so_far": sum(counts.values()),
-                            "elapsed_s": time.time() - t0,
-                        },
-                        f,
-                        ensure_ascii=False,
-                    )
+            if every and (processed % every == 0):
+                write_progress(progress_p, {
+                    "bias": "exposure_concentration",
+                    "dataset": "cosrec",
+                    "partition": "curated",
+                    "processed_episodes": processed,
+                    "unique_items_so_far": len(counts),
+                    "total_mentions_so_far": sum(counts.values()),
+                    "elapsed_s": time.time() - t0,
+                })
 
         freqs = list(counts.values())
         total_mentions = int(sum(freqs))
@@ -96,7 +91,6 @@ class ExposureConcentrationCoSRec:
             "top50_share": top_share(50),
             "top100_share": top_share(100),
             "gini": gini(freqs),
-            "hhi": hhi(freqs),
         }
 
         out_p.parent.mkdir(parents=True, exist_ok=True)

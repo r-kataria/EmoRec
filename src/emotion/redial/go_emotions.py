@@ -14,6 +14,7 @@ from dataset.redial import (
     safe_id,
 )
 from emotion.go_emotions_base import GoEmotionsBase
+from utils.progress import write_progress
 
 
 class GoEmotionsReDial(GoEmotionsBase):
@@ -53,13 +54,6 @@ class GoEmotionsReDial(GoEmotionsBase):
             with open(p, "r", encoding="utf-8") as f:
                 return json.load(f)
 
-        record = self._compute(conv)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(record, f, ensure_ascii=False)
-        return record
-
-    def _compute(self, conv: ReDialConversation) -> Dict[str, Any]:
         ds: ReDialDataset = conv.dataset
         mentions = dict(ds.movie_mentions_map())
         mentions.update(conv.movie_mentions or {})
@@ -81,7 +75,7 @@ class GoEmotionsReDial(GoEmotionsBase):
 
         preds_topk = self._predict_texts(texts)
 
-        return {
+        record = {
             "dataset": "redial",
             "split": conv.split,
             "conversationId": conv.conversation_id,
@@ -100,6 +94,10 @@ class GoEmotionsReDial(GoEmotionsBase):
                 for i in range(len(preds_topk))
             ],
         }
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(record, f, ensure_ascii=False)
+        return record
 
     def build(
         self,
@@ -127,22 +125,15 @@ class GoEmotionsReDial(GoEmotionsBase):
                     break
 
             if every and (processed % every == 0):
-                if progress_p is not None:
-                    progress_p.parent.mkdir(parents=True, exist_ok=True)
-                    with open(progress_p, "w", encoding="utf-8") as f:
-                        json.dump(
-                            {
-                                "signal": "emotion",
-                                "model": self.MODEL,
-                                "top_k": self.top_k,
-                                "split": split,
-                                "processed_conversations": processed,
-                                "computed_new_conversations": computed,
-                                "elapsed_s": time.time() - t0,
-                            },
-                            f,
-                            ensure_ascii=False,
-                        )
+                write_progress(progress_p, {
+                    "signal": "emotion",
+                    "model": self.MODEL,
+                    "top_k": self.top_k,
+                    "split": split,
+                    "processed_conversations": processed,
+                    "computed_new_conversations": computed,
+                    "elapsed_s": time.time() - t0,
+                })
                 print(
                     f"[emotion:redial] split={split} processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
                     flush=True,

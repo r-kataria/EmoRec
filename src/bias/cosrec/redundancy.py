@@ -4,9 +4,10 @@ import json
 import time
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from dataset.cosrec import CoSRecRecEpisode, safe_id
+from utils.progress import write_progress
 
 
 class RedundancyBiasCoSRec:
@@ -21,46 +22,6 @@ class RedundancyBiasCoSRec:
 
     def has(self, ep: CoSRecRecEpisode) -> bool:
         return self._ep_path(ep).exists()
-
-    def _write(self, ep: CoSRecRecEpisode, record: Dict[str, Any]) -> None:
-        p = self._ep_path(ep)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(record, f, ensure_ascii=False)
-
-    def _build_record(
-        self,
-        ep: CoSRecRecEpisode,
-        asins: List[str],
-        new_items: List[str],
-        repeated_items: List[str],
-        counts: Dict[str, int],
-    ) -> Dict[str, Any]:
-        total = int(sum(counts.values()))
-        unique = int(len(counts))
-        redundancy_rate = float(1.0 - (unique / total)) if total > 0 else 0.0
-
-        return {
-            "dataset": "cosrec",
-            "partition": "curated",
-            "topic_id": ep.topic_id,
-            "base_intent_id": ep.base_intent_id,
-            "user_index": ep.user_index,
-            "conversation_id": ep.conversation_id,
-            "utterance_idx": ep.utterance_idx,
-            "intent_type": ep.intent_type,
-            "created_at_unix": time.time(),
-            "catalogue": "amazon_2023",
-            "asins": asins,
-            "new_items": new_items,
-            "repeated_items": repeated_items,
-            "summary": {
-                "total_items_so_far": total,
-                "unique_items_so_far": unique,
-                "redundancy_rate_so_far": redundancy_rate,
-                "repeated_item_counts": {k: v for k, v in counts.items() if v > 1},
-            },
-        }
 
     def build(
         self,
@@ -97,29 +58,51 @@ class RedundancyBiasCoSRec:
 
                 processed += 1
                 if not self.has(ep):
-                    rec = self._build_record(ep, asins, new_items, repeated_items, dict(seen))
-                    self._write(ep, rec)
+                    counts = dict(seen)
+                    total = int(sum(counts.values()))
+                    unique = int(len(counts))
+                    redundancy_rate = float(1.0 - (unique / total)) if total > 0 else 0.0
+
+                    rec = {
+                        "dataset": "cosrec",
+                        "partition": "curated",
+                        "topic_id": ep.topic_id,
+                        "base_intent_id": ep.base_intent_id,
+                        "user_index": ep.user_index,
+                        "conversation_id": ep.conversation_id,
+                        "utterance_idx": ep.utterance_idx,
+                        "intent_type": ep.intent_type,
+                        "created_at_unix": time.time(),
+                        "catalogue": "amazon_2023",
+                        "asins": asins,
+                        "new_items": new_items,
+                        "repeated_items": repeated_items,
+                        "summary": {
+                            "total_items_so_far": total,
+                            "unique_items_so_far": unique,
+                            "redundancy_rate_so_far": redundancy_rate,
+                            "repeated_item_counts": {k: v for k, v in counts.items() if v > 1},
+                        },
+                    }
+
+                    p = self._ep_path(ep)
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    with open(p, "w", encoding="utf-8") as f:
+                        json.dump(rec, f, ensure_ascii=False)
                     computed += 1
                     if max_new is not None and computed >= max_new:
                         stop = True
                         break
 
                 if every and (processed % every == 0):
-                    if progress_p is not None:
-                        progress_p.parent.mkdir(parents=True, exist_ok=True)
-                        with open(progress_p, "w", encoding="utf-8") as f:
-                            json.dump(
-                                {
-                                    "bias": "redundancy",
-                                    "dataset": "cosrec",
-                                    "partition": "curated",
-                                    "processed_episodes": processed,
-                                    "computed_new": computed,
-                                    "elapsed_s": time.time() - t0,
-                                },
-                                f,
-                                ensure_ascii=False,
-                            )
+                    write_progress(progress_p, {
+                        "bias": "redundancy",
+                        "dataset": "cosrec",
+                        "partition": "curated",
+                        "processed_episodes": processed,
+                        "computed_new": computed,
+                        "elapsed_s": time.time() - t0,
+                    })
                     print(
                         f"[bias:redundancy:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
                         flush=True,

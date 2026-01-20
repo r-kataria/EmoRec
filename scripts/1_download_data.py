@@ -1,55 +1,11 @@
 #!/usr/bin/env python3
-import subprocess
 from pathlib import Path
-from typing import Iterable, Optional
 
-
-def run_cmd(args: Iterable[str], cwd: Optional[Path] = None) -> None:
-    subprocess.run(list(args), check=True, cwd=str(cwd) if cwd else None)
-
-
-def echo(msg: str) -> None:
-    print(msg, flush=True)
+from utils.download_helpers import download, echo, ensure_dir, git_clone, run_cmd, untar, unzip
 
 
 BASE = Path("cache/datasets")
 
-
-# Download helpers
-def ensure_dir(path: Path) -> None:
-    if not path.exists():
-        path.mkdir(parents=True, exist_ok=True)
-        echo(f"Created directory: {path}")
-    else:
-        echo(f"Exists, skipping dir: {path}")
-
-def git_clone(url: str, dest: Path) -> None:
-    if dest.exists():
-        echo(f"Repo exists, skipping clone: {dest}")
-    else:
-        echo(f"Cloning {url} -> {dest}")
-        run_cmd(["git", "clone", url, str(dest)])
-
-def download(url: str, out: Path) -> None:
-    if out.exists():
-        echo(f"Exists, skipping download: {out}")
-    else:
-        echo(f"Downloading {url}")
-        run_cmd(["wget", "-O", str(out), url])
-
-def unzip(zip_path: Path, out_dir: Path) -> None:
-    if out_dir.exists() and any(out_dir.iterdir()):
-        echo(f"Unzipped content exists, skipping unzip: {out_dir}")
-    else:
-        echo(f"Unzipping {zip_path}")
-        run_cmd(["unzip", "-o", str(zip_path), "-d", str(out_dir)])
-
-def untar(tar_path: Path, out_dir: Path) -> None:
-    if out_dir.exists() and any(out_dir.iterdir()):
-        echo(f"Extracted content exists, skipping untar: {out_dir}")
-    else:
-        echo(f"Extracting {tar_path}")
-        run_cmd(["tar", "-xvf", str(tar_path), "-C", str(out_dir)])
 
 # Dataset downloaders
 
@@ -79,10 +35,7 @@ def download_movielens() -> None:
     ensure_dir(ml_dir)
 
     ml_zip = ml_dir / "ml-25m.zip"
-    download(
-        "https://files.grouplens.org/datasets/movielens/ml-25m.zip",
-        ml_zip,
-    )
+    download("https://files.grouplens.org/datasets/movielens/ml-25m.zip", ml_zip)
     unzip(ml_zip, ml_dir)
 
 def download_amazon_2023() -> None:
@@ -90,10 +43,7 @@ def download_amazon_2023() -> None:
     ensure_dir(amazon)
 
     asin2cat = amazon / "asin2category.json"
-    download(
-        "https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023/resolve/main/asin2category.json",
-        asin2cat,
-    )
+    download("https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023/resolve/main/asin2category.json", asin2cat)
 
     meta_dir = amazon / "raw/meta_categories"
     review_dir = amazon / "raw/review_categories"
@@ -149,10 +99,7 @@ def download_msmarco() -> None:
     ensure_dir(msmarco)
 
     msmarco_tar = msmarco / "msmarco_v2.1_doc_segmented.tar"
-    download(
-        "https://msmarco.z22.web.core.windows.net/msmarcoranking/msmarco_v2.1_doc_segmented.tar",
-        msmarco_tar,
-    )
+    download("https://msmarco.z22.web.core.windows.net/msmarcoranking/msmarco_v2.1_doc_segmented.tar", msmarco_tar)
     untar(msmarco_tar, msmarco)
 
 # Main
