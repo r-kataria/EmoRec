@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 import time
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -9,96 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from dataset.amazon_reviews import AmazonReviews2023Index
 from dataset.cosrec import CoSRecRecEpisode, safe_id
-
-
-def _popularity_bins(values: List[float], bins: int) -> List[float]:
-    if not values or bins <= 0:
-        return []
-    counts = [0] * bins
-    for v in values:
-        try:
-            x = float(v)
-        except Exception:
-            continue
-        if x < 0:
-            idx = 0
-        elif x >= 1:
-            idx = bins - 1
-        else:
-            idx = int(x * bins)
-            if idx >= bins:
-                idx = bins - 1
-        counts[idx] += 1
-    total = sum(counts)
-    if total == 0:
-        return []
-    return [c / total for c in counts]
-
-
-def _js_divergence(p: List[float], q: List[float]) -> Optional[float]:
-    if not p or not q or len(p) != len(q):
-        return None
-    m = [(p[i] + q[i]) * 0.5 for i in range(len(p))]
-
-    def kl(a: List[float], b: List[float]) -> float:
-        out = 0.0
-        for i, av in enumerate(a):
-            if av <= 0:
-                continue
-            bv = b[i]
-            if bv <= 0:
-                continue
-            out += av * math.log(av / bv)
-        return float(out)
-
-    return 0.5 * kl(p, m) + 0.5 * kl(q, m)
-
-
-def _js_similarity(p: List[float], q: List[float]) -> Optional[float]:
-    jsd = _js_divergence(p, q)
-    if jsd is None:
-        return None
-    if jsd <= 0:
-        return 1.0
-    denom = math.log(2.0)
-    if denom <= 0:
-        return None
-    sim = 1.0 - (jsd / denom)
-    if sim < 0:
-        return 0.0
-    if sim > 1:
-        return 1.0
-    return float(sim)
-
-
-def _rank_utility(pcts: List[float]) -> Optional[float]:
-    if not pcts:
-        return None
-    weights = [1.0 / math.log2(i + 2) for i in range(len(pcts))]
-    denom = sum(weights)
-    if denom <= 0:
-        return None
-    return float(sum(w * p for w, p in zip(weights, pcts)) / denom)
-
-
-def _mean(values: List[float]) -> Optional[float]:
-    if not values:
-        return None
-    return float(sum(values) / len(values))
-
-
-def _mean_bins(bins_list: List[List[float]], bins: int) -> Optional[List[float]]:
-    if not bins_list or bins <= 0:
-        return None
-    filtered = [b for b in bins_list if b and len(b) == bins]
-    if not filtered:
-        return None
-    sums = [0.0] * bins
-    for b in filtered:
-        for i in range(bins):
-            sums[i] += float(b[i])
-    denom = float(len(filtered))
-    return [s / denom for s in sums]
+from bias.metrics import js_similarity, mean, mean_bins, popularity_bins, rank_utility
 
 
 class EpisodePopularityBiasCoSRec:
@@ -153,17 +63,17 @@ class EpisodePopularityBiasCoSRec:
             pcts.append(float(self.amazon.popularity_percentile(num)))
             mapped_asins.append(asin)
 
-        bins = _popularity_bins(pcts, self.bins)
+        bins = popularity_bins(pcts, self.bins)
         p_coverage = float(sum(1 for p in pcts if p >= 0.9) / len(pcts)) if pcts else None
-        pi_rank = _rank_utility(pcts)
-        mean_pct = _mean(pcts)
+        pi_rank = rank_utility(pcts)
+        mean_pct = mean(pcts)
 
         intent_category = self._dominant_category(asins)
         uiop = None
         if intent_category:
             intent_bins = self.amazon.category_popularity_distribution(intent_category, bins=self.bins)
             if intent_bins and bins:
-                uiop = _js_similarity(bins, intent_bins)
+                uiop = js_similarity(bins, intent_bins)
 
         metrics = {
             "num_items_total": int(len(asins)),
@@ -222,7 +132,7 @@ class EpisodePopularityBiasCoSRec:
                     metrics_bins.append((ep, metrics, bins))
 
                 for ep, metrics, bins in metrics_bins:
-                    cep = _js_similarity(prev_turn_bins, bins) if prev_turn_bins and bins else None
+                    cep = js_similarity(prev_turn_bins, bins) if prev_turn_bins and bins else None
 
                     processed += 1
                     if not self.has(ep):
@@ -280,7 +190,7 @@ class EpisodePopularityBiasCoSRec:
                 if stop:
                     break
 
-                group_bins = _mean_bins([b for _, _, b in metrics_bins], self.bins)
+                group_bins = mean_bins([b for _, _, b in metrics_bins], self.bins)
                 prev_turn_bins = group_bins
 
         print(

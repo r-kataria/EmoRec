@@ -1,6 +1,6 @@
 Dataset: CoSRec
 Episodes: 225
-Stereotype label rates (%): LABEL_0=91.6, LABEL_1=8.4
+Stereotype label rates (%): Non-biased=91.6, Biased=8.4
 p01 nonzero rate: 0.156
 p05 nonzero rate: 0.596
 p10 nonzero rate: 0.809

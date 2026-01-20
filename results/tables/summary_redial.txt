@@ -1,13 +1,13 @@
 Dataset: ReDial
 Episodes: 26372
-Stereotype label rates (%): LABEL_0=65.1, LABEL_1=34.9
+Stereotype label rates (%): Non-biased=65.1, Biased=34.9
 p01 nonzero rate: 0.343
 p05 nonzero rate: 0.726
 p10 nonzero rate: 0.868
 pi nonzero rate: 0.991
 pop_mean_pct nonzero rate: 0.991
-cep nonzero rate: 0.000
-uiop nonzero rate: 0.000
+cep nonzero rate: 0.474
+uiop nonzero rate: 0.263
 Exposure: gini=0.7019041698206012, hhi=0.0022192273202511817
 
 Top correlations (Spearman p<0.05):
@@ -27,6 +27,8 @@ Model summary (5-fold CV):
   p05: R^2=0.004, MAE=0.401, n=26372
   p10: R^2=0.002, MAE=0.242, n=26372
   pi: R^2=0.000, MAE=0.072, n=26372
+  cep: R^2=-0.001, MAE=0.322, n=15643
+  uiop: R^2=-0.002, MAE=0.304, n=8504
   pop_mean_pct: R^2=0.000, MAE=0.072, n=26372
   genre_js: R^2=0.002, MAE=0.071, n=26265
   genre_entropy: R^2=0.004, MAE=0.443, n=26372

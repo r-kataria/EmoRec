@@ -1,78 +1,80 @@
 #!/usr/bin/env python3
 import subprocess
 from pathlib import Path
+from typing import Iterable, Optional
 
-def run(cmd: str):
-    """Run a shell command as a single line."""
-    subprocess.run(cmd, shell=True, check=True)
 
-def echo(msg: str):
+def run_cmd(args: Iterable[str], cwd: Optional[Path] = None) -> None:
+    subprocess.run(list(args), check=True, cwd=str(cwd) if cwd else None)
+
+
+def echo(msg: str) -> None:
     print(msg, flush=True)
+
 
 BASE = Path("cache/datasets")
 
 
 # Download helpers
-def ensure_dir(path: Path):
+def ensure_dir(path: Path) -> None:
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
         echo(f"Created directory: {path}")
     else:
         echo(f"Exists, skipping dir: {path}")
 
-def git_clone(url: str, dest: Path):
+def git_clone(url: str, dest: Path) -> None:
     if dest.exists():
         echo(f"Repo exists, skipping clone: {dest}")
     else:
         echo(f"Cloning {url} -> {dest}")
-        run(f"git clone {url} {dest}")
+        run_cmd(["git", "clone", url, str(dest)])
 
-def download(url: str, out: Path):
+def download(url: str, out: Path) -> None:
     if out.exists():
         echo(f"Exists, skipping download: {out}")
     else:
         echo(f"Downloading {url}")
-        run(f"wget -O {out} {url}")
+        run_cmd(["wget", "-O", str(out), url])
 
-def unzip(zip_path: Path, out_dir: Path):
-    if any(out_dir.iterdir()):
+def unzip(zip_path: Path, out_dir: Path) -> None:
+    if out_dir.exists() and any(out_dir.iterdir()):
         echo(f"Unzipped content exists, skipping unzip: {out_dir}")
     else:
         echo(f"Unzipping {zip_path}")
-        run(f"unzip -o {zip_path} -d {out_dir}")
+        run_cmd(["unzip", "-o", str(zip_path), "-d", str(out_dir)])
 
-def untar(tar_path: Path, out_dir: Path):
-    if any(out_dir.iterdir()):
+def untar(tar_path: Path, out_dir: Path) -> None:
+    if out_dir.exists() and any(out_dir.iterdir()):
         echo(f"Extracted content exists, skipping untar: {out_dir}")
     else:
         echo(f"Extracting {tar_path}")
-        run(f"tar -xvf {tar_path} -C {out_dir}")
+        run_cmd(["tar", "-xvf", str(tar_path), "-C", str(out_dir)])
 
 # Dataset downloaders
 
-def download_redial():
+def download_redial() -> None:
     redial = BASE / "redial"
     git_clone("https://github.com/ReDialData/website", redial)
 
-    run(f"cd {redial} && git checkout data")
+    run_cmd(["git", "checkout", "data"], cwd=redial)
     
     redial_zip = redial / "redial_dataset.zip"
     if not redial_zip.exists():
         raise FileNotFoundError(f"Expected ReDial zip not found: {redial_zip}")
 
     data_dir = redial / "data"
-    print(data_dir)
     if data_dir.exists():
         echo("ReDial dataset already extracted, skipping unzip")
     else:
         echo("Extracting ReDial dataset")
-        run(f"unzip -o {redial_zip} -d ./{data_dir}")
+        run_cmd(["unzip", "-o", str(redial_zip), "-d", str(data_dir)])
 
-def download_cosrec():
+def download_cosrec() -> None:
     cosrec = BASE / "cosrec"
     git_clone("https://github.com/CAMEO-22/CoSRec", cosrec)
 
-def download_movielens():
+def download_movielens() -> None:
     ml_dir = BASE / "movielens/ml-25m"
     ensure_dir(ml_dir)
 
@@ -83,7 +85,7 @@ def download_movielens():
     )
     unzip(ml_zip, ml_dir)
 
-def download_amazon_2023():
+def download_amazon_2023() -> None:
     amazon = BASE / "amazon_2023"
     ensure_dir(amazon)
 
@@ -100,27 +102,49 @@ def download_amazon_2023():
 
     if not any(meta_dir.iterdir()):
         echo("Downloading Amazon meta_categories")
-        run(
-            "wget -r -np -nd -e robots=off "
-            "-A 'meta_*.jsonl.gz' -R 'index.html*' "
-            f"-P {meta_dir} "
-            "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/meta_categories/"
+        run_cmd(
+            [
+                "wget",
+                "-r",
+                "-np",
+                "-nd",
+                "-e",
+                "robots=off",
+                "-A",
+                "meta_*.jsonl.gz",
+                "-R",
+                "index.html*",
+                "-P",
+                str(meta_dir),
+                "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/meta_categories/",
+            ]
         )
     else:
         echo("Amazon meta_categories exists, skipping")
 
     if not any(review_dir.iterdir()):
         echo("Downloading Amazon review_categories")
-        run(
-            "wget -r -np -nd -e robots=off "
-            "-A '*.jsonl.gz' -R 'index.html*' "
-            f"-P {review_dir} "
-            "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/review_categories/"
+        run_cmd(
+            [
+                "wget",
+                "-r",
+                "-np",
+                "-nd",
+                "-e",
+                "robots=off",
+                "-A",
+                "*.jsonl.gz",
+                "-R",
+                "index.html*",
+                "-P",
+                str(review_dir),
+                "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/review_categories/",
+            ]
         )
     else:
         echo("Amazon review_categories exists, skipping")
 
-def download_msmarco():
+def download_msmarco() -> None:
     msmarco = BASE / "msmarco"
     ensure_dir(msmarco)
 
@@ -133,7 +157,7 @@ def download_msmarco():
 
 # Main
 
-def download_all():
+def download_all() -> None:
     ensure_dir(BASE)
     download_redial()
     download_cosrec()

@@ -1,40 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 from typing import Iterable, Optional
 
-
-def _parse_device(value):
-    if isinstance(value, int):
-        return value
-    if value is None:
-        return "auto"
-    v = str(value).strip()
-    if v.lower() in {"auto", "mps"}:
-        return v.lower()
-    try:
-        return int(v)
-    except Exception:
-        return v
-
-
-def _parse_top_k(value: Optional[str | int]) -> Optional[int]:
-    if value is None:
-        return None
-    if isinstance(value, int):
-        return value
-    v = str(value).strip().lower()
-    if v in {"all", "none"}:
-        return None
-    return int(v)
-
-
-def _normalize_splits(splits: Iterable[str] | str) -> list[str]:
-    if isinstance(splits, str):
-        return [s.strip() for s in splits.split(",") if s.strip()]
-    return [str(s).strip() for s in splits if str(s).strip()]
+from utils.script_helpers import clear_dir, normalize_splits, parse_device, parse_top_k
 
 
 def build_redial_biases(
@@ -72,14 +42,14 @@ def build_redial_biases(
     yd = YearDecadeBias(cache_root=cache_root, movielens=ml)
     stereo = StereotypeBiasReDial(
         cache_root=cache_root,
-        device=_parse_device(device),
-        top_k=_parse_top_k(top_k),
+        device=parse_device(device),
+        top_k=parse_top_k(top_k),
         truncation=truncation,
         max_length=max_length,
         batch_size=batch_size,
     )
 
-    for split in _normalize_splits(splits):
+    for split in normalize_splits(splits):
         if force:
             for base_dir in [
                 pop._base_dir(),
@@ -90,8 +60,7 @@ def build_redial_biases(
                 stereo._base_dir(),
             ]:
                 split_dir = base_dir / split
-                if split_dir.exists():
-                    shutil.rmtree(split_dir)
+                clear_dir(split_dir)
 
         pop.build(
             ds,
@@ -181,7 +150,8 @@ def build_cosrec_biases(
     exp = ExposureConcentrationCoSRec(cache_root=cache_root)
     stereo = StereotypeBiasCoSRec(
         cache_root=cache_root,
-        device=_parse_device(device),
+        device=parse_device(device),
+        top_k=parse_top_k(top_k),
         truncation=truncation,
         max_length=max_length,
         batch_size=batch_size,
@@ -196,8 +166,7 @@ def build_cosrec_biases(
             red._base_dir(),
             stereo._base_dir(),
         ]:
-            if base_dir.exists():
-                shutil.rmtree(base_dir)
+            clear_dir(base_dir)
 
     pop.build(
         ds,

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -9,32 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from dataset.movielens import MovieLens25M
 from dataset.redial import ReDialConversation, extract_movie_ids, get_speaker, safe_id
-
-
-def _entropy(p: Dict[str, float]) -> float:
-    h = 0.0
-    for v in p.values():
-        if v > 0:
-            h -= v * math.log(v)
-    return float(h)
-
-
-def _js_divergence(p: Dict[str, float], q: Dict[str, float]) -> float:
-    keys = set(p.keys()) | set(q.keys())
-    m = {k: 0.5 * p.get(k, 0.0) + 0.5 * q.get(k, 0.0) for k in keys}
-
-    def kl(a: Dict[str, float], b: Dict[str, float]) -> float:
-        s = 0.0
-        for k, av in a.items():
-            if av <= 0:
-                continue
-            bv = b.get(k, 0.0)
-            if bv <= 0:
-                continue
-            s += av * math.log(av / bv)
-        return float(s)
-
-    return 0.5 * kl(p, m) + 0.5 * kl(q, m)
+from bias.metrics import entropy, js_divergence_dict
 
 
 class GenreBias:
@@ -99,8 +73,8 @@ class GenreBias:
             if speaker == "Recommender" and ml_ids:
                 conv_items.extend(ml_ids)
                 dist = self._dist_from_items(ml_ids)
-                jsd = _js_divergence(dist, self.baseline) if dist and self.baseline else None
-                ent = _entropy(dist) if dist else 0.0
+                jsd = js_divergence_dict(dist, self.baseline) if dist and self.baseline else None
+                ent = entropy(dist) if dist else 0.0
                 bias_obj = {
                     "genres_dist": dist,
                     "genres_entropy": ent,
@@ -119,8 +93,8 @@ class GenreBias:
             )
 
         conv_dist = self._dist_from_items(conv_items)
-        conv_jsd = _js_divergence(conv_dist, self.baseline) if conv_dist and self.baseline else None
-        conv_ent = _entropy(conv_dist) if conv_dist else 0.0
+        conv_jsd = js_divergence_dict(conv_dist, self.baseline) if conv_dist and self.baseline else None
+        conv_ent = entropy(conv_dist) if conv_dist else 0.0
 
         summary = {
             "total_items": int(len(conv_items)),

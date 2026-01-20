@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 import statistics
 import time
 from collections import defaultdict
@@ -10,32 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from dataset.movielens import MovieLens25M
 from dataset.redial import ReDialConversation, extract_movie_ids, get_speaker, safe_id
-
-
-def _entropy(p: Dict[str, float]) -> float:
-    h = 0.0
-    for v in p.values():
-        if v > 0:
-            h -= v * math.log(v)
-    return float(h)
-
-
-def _js_divergence(p: Dict[str, float], q: Dict[str, float]) -> float:
-    keys = set(p.keys()) | set(q.keys())
-    m = {k: 0.5 * p.get(k, 0.0) + 0.5 * q.get(k, 0.0) for k in keys}
-
-    def kl(a: Dict[str, float], b: Dict[str, float]) -> float:
-        s = 0.0
-        for k, av in a.items():
-            if av <= 0:
-                continue
-            bv = b.get(k, 0.0)
-            if bv <= 0:
-                continue
-            s += av * math.log(av / bv)
-        return float(s)
-
-    return 0.5 * kl(p, m) + 0.5 * kl(q, m)
+from bias.metrics import entropy, js_divergence_dict
 
 
 class YearDecadeBias:
@@ -117,16 +91,16 @@ class YearDecadeBias:
 
                 bias_obj = {
                     "years_dist": year_dist,
-                    "years_entropy": _entropy(year_dist) if year_dist else 0.0,
-                    "years_js_divergence_vs_catalog": _js_divergence(year_dist, self.year_baseline)
+                    "years_entropy": entropy(year_dist) if year_dist else 0.0,
+                    "years_js_divergence_vs_catalog": js_divergence_dict(year_dist, self.year_baseline)
                     if year_dist and self.year_baseline
                     else None,
                     "year_coverage": int(len(year_dist)),
                     "mean_year": float(sum(years) / len(years)),
                     "median_year": float(statistics.median(years)),
                     "decades_dist": decade_dist,
-                    "decades_entropy": _entropy(decade_dist) if decade_dist else 0.0,
-                    "decades_js_divergence_vs_catalog": _js_divergence(decade_dist, self.decade_baseline)
+                    "decades_entropy": entropy(decade_dist) if decade_dist else 0.0,
+                    "decades_js_divergence_vs_catalog": js_divergence_dict(decade_dist, self.decade_baseline)
                     if decade_dist and self.decade_baseline
                     else None,
                     "decade_coverage": int(len(decade_dist)),
@@ -151,16 +125,16 @@ class YearDecadeBias:
             "total_items": int(len(conv_years)),
             "unique_items": int(len(set(conv_years))),
             "years_dist": conv_year_dist,
-            "years_entropy": _entropy(conv_year_dist) if conv_year_dist else 0.0,
-            "years_js_divergence_vs_catalog": _js_divergence(conv_year_dist, self.year_baseline)
+            "years_entropy": entropy(conv_year_dist) if conv_year_dist else 0.0,
+            "years_js_divergence_vs_catalog": js_divergence_dict(conv_year_dist, self.year_baseline)
             if conv_year_dist and self.year_baseline
             else None,
             "year_coverage": int(len(conv_year_dist)),
             "mean_year": float(sum(conv_years) / len(conv_years)) if conv_years else None,
             "median_year": float(statistics.median(conv_years)) if conv_years else None,
             "decades_dist": conv_decade_dist,
-            "decades_entropy": _entropy(conv_decade_dist) if conv_decade_dist else 0.0,
-            "decades_js_divergence_vs_catalog": _js_divergence(conv_decade_dist, self.decade_baseline)
+            "decades_entropy": entropy(conv_decade_dist) if conv_decade_dist else 0.0,
+            "decades_js_divergence_vs_catalog": js_divergence_dict(conv_decade_dist, self.decade_baseline)
             if conv_decade_dist and self.decade_baseline
             else None,
             "decade_coverage": int(len(conv_decade_dist)),

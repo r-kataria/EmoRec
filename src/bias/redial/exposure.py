@@ -4,31 +4,11 @@ import json
 import time
 from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from dataset.movielens import MovieLens25M
 from dataset.redial import extract_movie_ids, get_speaker
-
-
-def _gini(counts: List[int]) -> float:
-    if not counts:
-        return 0.0
-    x = sorted(counts)
-    n = len(x)
-    s = sum(x)
-    if s == 0:
-        return 0.0
-    num = 0.0
-    for i, v in enumerate(x, start=1):
-        num += i * v
-    return float((2.0 * num) / (n * s) - (n + 1) / n)
-
-
-def _hhi(freqs: List[int]) -> float:
-    s = sum(freqs)
-    if s == 0:
-        return 0.0
-    return float(sum((f / s) ** 2 for f in freqs))
+from bias.metrics import gini, hhi
 
 
 class ExposureConcentration:
@@ -117,8 +97,8 @@ class ExposureConcentration:
             "top10_share": top_share(10),
             "top50_share": top_share(50),
             "top100_share": top_share(100),
-            "gini": _gini(freqs),
-            "hhi": _hhi(freqs),
+            "gini": gini(freqs),
+            "hhi": hhi(freqs),
         }
 
         out_p.parent.mkdir(parents=True, exist_ok=True)
