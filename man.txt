@@ -9,6 +9,7 @@ emotion: neutral (0.96), approval (0.02), annoyance (0.01), realization (0.01), 
 B: I'm looking for some films my wife and I can stream online and watch this morning. What do you recommend?
 bias stereotype: LABEL_0 (0.98)
 bias popularity: none
+bias episode_popularity: none
 bias genre: none
 bias year/decade: none
 bias redundancy: new=0 repeated=0
@@ -19,6 +20,7 @@ emotion: curiosity (0.61), neutral (0.45), confusion (0.13), approval (0.03), op
 B: No, not really. Just as long as it's a good mix of things.
 bias stereotype: LABEL_0 (0.82)
 bias popularity: none
+bias episode_popularity: none
 bias genre: none
 bias year/decade: none
 bias redundancy: new=0 repeated=0
@@ -29,6 +31,7 @@ emotion: neutral (0.91), approval (0.07), realization (0.01), excitement (0.00),
 B: The girl from Scream  (1996)
 bias stereotype: LABEL_0 (0.61)
 bias popularity: mean_pct=1.00 head_top10=1.00 mean_count=16657.0
+bias episode_popularity: P=1.00 pi=1.00 CEP=none UIOP=1.00
 bias genre: js=0.35 entropy=1.39 coverage=4
 bias year/decade: decade_js=0.52 decade_entropy=0.00 coverage=1 mean_year=1996.0
 bias redundancy: new=1 repeated=0
@@ -39,6 +42,7 @@ emotion: admiration (0.78), neutral (0.05), approval (0.05), excitement (0.03), 
 B: :O
 bias stereotype: LABEL_0 (0.83)
 bias popularity: none
+bias episode_popularity: none
 bias genre: none
 bias year/decade: none
 bias redundancy: new=0 repeated=0
@@ -49,6 +53,7 @@ emotion: amusement (0.92), joy (0.08), neutral (0.02), admiration (0.01), approv
 B: I would also suggest District 9 (2009) . It's a sci-fi movie set in Johanesburg (sp) South Africa. An alien race arrives and they are treated rather cruelly.
 bias stereotype: LABEL_1 (0.84)
 bias popularity: mean_pct=1.00 head_top10=1.00 mean_count=17970.0
+bias episode_popularity: P=1.00 pi=1.00 CEP=1.00 UIOP=none
 bias genre: js=0.49 entropy=1.10 coverage=3
 bias year/decade: decade_js=0.42 decade_entropy=0.00 coverage=1 mean_year=2009.0
 bias redundancy: new=1 repeated=0
@@ -59,6 +64,7 @@ emotion: admiration (0.94), approval (0.08), joy (0.02), gratitude (0.01), neutr
 B: Another sci-fi film is Children of Men (2006) . It's less aliens and space craft and more a dystopian drama about the world after everyone has gone sterile.
 bias stereotype: LABEL_1 (0.96)
 bias popularity: mean_pct=0.99 head_top10=1.00 mean_count=15063.0
+bias episode_popularity: P=1.00 pi=0.99 CEP=1.00 UIOP=none
 bias genre: js=0.28 entropy=1.61 coverage=5
 bias year/decade: decade_js=0.42 decade_entropy=0.00 coverage=1 mean_year=2006.0
 bias redundancy: new=1 repeated=0
@@ -69,6 +75,7 @@ emotion: neutral (0.96), approval (0.02), realization (0.01), annoyance (0.00), 
 B: And for a bit of old school horror I'll suggest Demon Knight (1995) . It's an old Tales from the Crypt film
 bias stereotype: LABEL_1 (0.91)
 bias popularity: none
+bias episode_popularity: none
 bias genre: none
 bias year/decade: none
 bias redundancy: new=0 repeated=0
@@ -79,6 +86,7 @@ emotion: love (0.72), disappointment (0.47), optimism (0.22), sadness (0.12), de
 B: It was pretty hilarious, lol. The Crypt Keeper was hilarious.
 bias stereotype: LABEL_1 (0.92)
 bias popularity: none
+bias episode_popularity: none
 bias genre: none
 bias year/decade: none
 bias redundancy: new=0 repeated=0
@@ -97,66 +105,74 @@ emotion: desire (0.67), neutral (0.25), optimism (0.04), excitement (0.03), appr
 
 B: Great choice! Premium rubber floor car mats are a fantastic way to protect your vehicle's interior from dirt, water, and other debris. What specific features are you looking for in these mats?
 episode CoSRec-Curated_1_0_0#0 (intent=recommendation, user_index=0, utterance_idx=0)
-items: B004OA2B22, rel=2; B006G2DD1O, rel=2; B00941LATQ, rel=1; B009AECJEC, rel=2; B00BZSDZTE, rel=2; +32 more
+items: B004OA2B22, rel=2, price=174.39, rating=4.00, ratings=14, store=Mopar, cats=Automotive/Interior Accessories; B006G2DD1O, rel=2, price=326.04, rating=4.40, ratings=3, store=Jeep, cats=Automotive/Interior Accessories; B009AECJEC, rel=2, price=151.00, rating=3.90, ratings=18, store=Mopar, cats=Automotive/Interior Accessories; B00BZSDZTE, rel=2, price=79.64, rating=4.30, ratings=22, store=Mopar, cats=Automotive/Interior Accessories; B00NFX45H8, rel=2, price=218.44, rating=4.40, ratings=164, store=Mopar, cats=Automotive/Interior Accessories; +32 more
 bias stereotype: LABEL_0 (0.89)
 bias popularity: mean_pct=0.35 head_top10=0.03 mean_count=86.9
 bias rating: mean_rating=4.28 mean_pct=0.52
 bias genre: js=0.62 entropy=1.52 coverage=5
 bias redundancy: new=37 repeated=0
+bias episode_popularity: P=0.03 pi=0.35 CEP=none UIOP=0.97
 episode CoSRec-Curated_1_0_0#1 (intent=recommendation, user_index=1, utterance_idx=0)
-items: B00OB6W3B8, rel=1; B06XS58SGL, rel=2; B078HPQM54, rel=2; B078L92RYF, rel=2; B089XX96QQ, rel=2; +5 more
+items: B06XS58SGL, rel=2, price=189.00, rating=5.00, ratings=1, store=Worth-Mats, cats=Automotive/Interior Accessories; B078HPQM54, rel=2, price=52.99, rating=4.60, ratings=57, store=biosp, cats=Automotive/Interior Accessories; B078L92RYF, rel=2, price=176.60, rating=5.00, ratings=2, store=Worth-Mats, cats=Automotive/Interior Accessories; B089XX96QQ, rel=2, price=46.88, rating=4.30, ratings=174, store=Mixsuper, cats=Automotive/Interior Accessories; B08HYL5F3P, rel=2, price=59.99, rating=4.60, ratings=216, store=SAN AUTO, cats=Automotive/Interior Accessories; +5 more
 bias stereotype: LABEL_0 (0.89)
 bias popularity: mean_pct=0.29 head_top10=0.00 mean_count=47.8
 bias rating: mean_rating=4.42 mean_pct=0.54
 bias genre: js=0.62 entropy=1.51 coverage=5
 bias redundancy: new=2 repeated=8
+bias episode_popularity: P=0.00 pi=0.28 CEP=0.85 UIOP=0.79
 episode CoSRec-Curated_1_0_0#2 (intent=recommendation, user_index=2, utterance_idx=0)
-items: B06XS58SGL, rel=1; B078HPQM54, rel=2; B078L92RYF, rel=2; B07JNHYXM5, rel=1; B089XX96QQ, rel=1; +5 more
+items: B078HPQM54, rel=2, price=52.99, rating=4.60, ratings=57, store=biosp, cats=Automotive/Interior Accessories; B078L92RYF, rel=2, price=176.60, rating=5.00, ratings=2, store=Worth-Mats, cats=Automotive/Interior Accessories; B08HYL5F3P, rel=2, price=59.99, rating=4.60, ratings=216, store=SAN AUTO, cats=Automotive/Interior Accessories; B0B2L7ZRJJ, rel=2, price=125.99, rating=4.70, ratings=6, store=Danti, cats=Automotive/Interior Accessories; B0BN7W1YRQ, rel=2, price=169.99, rating=3.60, ratings=11, store=Vanseno, cats=Automotive/Interior Accessories; +5 more
 bias stereotype: LABEL_0 (0.89)
 bias popularity: mean_pct=0.34 head_top10=0.00 mean_count=50.4
 bias rating: mean_rating=4.51 mean_pct=0.59
 bias genre: js=0.62 entropy=1.54 coverage=5
 bias redundancy: new=1 repeated=9
+bias episode_popularity: P=0.00 pi=0.37 CEP=0.88 UIOP=0.87
 episode CoSRec-Curated_1_0_0#3 (intent=recommendation, user_index=3, utterance_idx=0)
-items: B009T9OYUK, rel=1; B06XS58SGL, rel=1; B078HPQM54, rel=2; B078L92RYF, rel=1; B07JNHYXM5, rel=2; +4 more
+items: B078HPQM54, rel=2, price=52.99, rating=4.60, ratings=57, store=biosp, cats=Automotive/Interior Accessories; B07JNHYXM5, rel=2, price=173.79, rating=4.90, ratings=19, store=3D MAXpider, cats=Automotive/Interior Accessories; B08HYL5F3P, rel=2, price=59.99, rating=4.60, ratings=216, store=SAN AUTO, cats=Automotive/Interior Accessories; B009T9OYUK, rel=1, price=89.94, rating=4.10, ratings=2, store=3D MAXpider, cats=Automotive/Interior Accessories; B06XS58SGL, rel=1, price=189.00, rating=5.00, ratings=1, store=Worth-Mats, cats=Automotive/Interior Accessories; +4 more
 bias stereotype: LABEL_0 (0.89)
 bias popularity: mean_pct=0.27 head_top10=0.00 mean_count=35.4
 bias rating: mean_rating=4.48 mean_pct=0.57
 bias genre: js=0.62 entropy=1.47 coverage=5
 bias redundancy: new=1 repeated=8
+bias episode_popularity: P=0.00 pi=0.34 CEP=0.97 UIOP=0.89
 
 A: Well, I'd like them to be made of high-quality rubber that can withstand sub-zero temperatures and hold up to 1-2 quarts of liquid without spilling.
 emotion: desire (0.44), neutral (0.36), approval (0.18), optimism (0.04), admiration (0.02)
 
 B: That sounds like a good starting point! From what I know, some premium rubber floor car mats are made with a non-stick finish for quick cleanup. However, their effectiveness in cold weather might vary. Would you like me to show you some options that fit your requirements?
 episode CoSRec-Curated_1_1_0#0 (intent=recommendation, user_index=0, utterance_idx=1)
-items: B0002MBT4M, rel=1; B0002MBT4W, rel=2; B0007TFKYK, rel=1; B000BQQOPI, rel=1; B078HPQM54, rel=1; +7 more
+items: B0002MBT4W, rel=2, price=74.95, rating=2.50, ratings=2, store=WeatherTech, cats=Automotive/Interior Accessories; B0002MBT4M, rel=1, price=74.95, rating=3.00, ratings=10, store=WeatherTech, cats=Automotive/Interior Accessories; B0007TFKYK, rel=1, price=74.95, rating=4.40, ratings=9, store=WeatherTech, cats=Automotive/Interior Accessories; B000BQQOPI, rel=1, price=74.95, rating=1.00, ratings=1, store=WeatherTech, cats=Automotive/Interior Accessories; B078HPQM54, rel=1, price=52.99, rating=4.60, ratings=57, store=biosp, cats=Automotive/Interior Accessories; +7 more
 bias stereotype: LABEL_0 (0.95)
 bias popularity: mean_pct=0.31 head_top10=0.00 mean_count=60.8
 bias rating: mean_rating=3.91 mean_pct=0.43
 bias genre: js=0.62 entropy=1.50 coverage=5
 bias redundancy: new=6 repeated=6
+bias episode_popularity: P=0.00 pi=0.28 CEP=0.93 UIOP=0.90
 episode CoSRec-Curated_1_1_0#1 (intent=recommendation, user_index=1, utterance_idx=1)
-items: B0002MBT4M, rel=2; B0002MBT4W, rel=2; B0007TFKYK, rel=2; B0007THS5Y, rel=1; B000BQQOPI, rel=2; +26 more
+items: B0002MBT4M, rel=2, price=74.95, rating=3.00, ratings=10, store=WeatherTech, cats=Automotive/Interior Accessories; B0002MBT4W, rel=2, price=74.95, rating=2.50, ratings=2, store=WeatherTech, cats=Automotive/Interior Accessories; B0007TFKYK, rel=2, price=74.95, rating=4.40, ratings=9, store=WeatherTech, cats=Automotive/Interior Accessories; B000BQQOPI, rel=2, price=74.95, rating=1.00, ratings=1, store=WeatherTech, cats=Automotive/Interior Accessories; B06XS58SGL, rel=2, price=189.00, rating=5.00, ratings=1, store=Worth-Mats, cats=Automotive/Interior Accessories; +26 more
 bias stereotype: LABEL_0 (0.95)
 bias popularity: mean_pct=0.38 head_top10=0.06 mean_count=699.5
 bias rating: mean_rating=4.16 mean_pct=0.47
 bias genre: js=0.62 entropy=1.57 coverage=8
 bias redundancy: new=12 repeated=19
+bias episode_popularity: P=0.06 pi=0.35 CEP=0.93 UIOP=0.94
 episode CoSRec-Curated_1_1_0#2 (intent=recommendation, user_index=2, utterance_idx=1)
-items: B0002MBT4M, rel=2; B0002MBT4W, rel=2; B0007TFKYK, rel=2; B0007THS5Y, rel=1; B000BQQOPI, rel=2; +29 more
+items: B0002MBT4M, rel=2, price=74.95, rating=3.00, ratings=10, store=WeatherTech, cats=Automotive/Interior Accessories; B0002MBT4W, rel=2, price=74.95, rating=2.50, ratings=2, store=WeatherTech, cats=Automotive/Interior Accessories; B0007TFKYK, rel=2, price=74.95, rating=4.40, ratings=9, store=WeatherTech, cats=Automotive/Interior Accessories; B000BQQOPI, rel=2, price=74.95, rating=1.00, ratings=1, store=WeatherTech, cats=Automotive/Interior Accessories; B004U00UXS, rel=2, price=74.95, rating=5.00, ratings=5, store=WeatherTech, cats=Automotive/Interior Accessories; +29 more
 bias stereotype: LABEL_0 (0.95)
 bias popularity: mean_pct=0.35 head_top10=0.00 mean_count=49.2
 bias rating: mean_rating=4.25 mean_pct=0.50
 bias genre: js=0.62 entropy=1.49 coverage=5
 bias redundancy: new=9 repeated=25
+bias episode_popularity: P=0.00 pi=0.30 CEP=0.91 UIOP=0.94
 episode CoSRec-Curated_1_1_0#3 (intent=recommendation, user_index=3, utterance_idx=1)
-items: B0002MBT4M, rel=2; B0002MBT4W, rel=2; B0002MBT92, rel=1; B0007TFKYK, rel=2; B0007TFL6M, rel=2; +11 more
+items: B0002MBT4M, rel=2, price=74.95, rating=3.00, ratings=10, store=WeatherTech, cats=Automotive/Interior Accessories; B0002MBT4W, rel=2, price=74.95, rating=2.50, ratings=2, store=WeatherTech, cats=Automotive/Interior Accessories; B0007TFKYK, rel=2, price=74.95, rating=4.40, ratings=9, store=WeatherTech, cats=Automotive/Interior Accessories; B0007TFL6M, rel=2, price=74.95, rating=4.10, ratings=20, store=WeatherTech, cats=Automotive/Interior Accessories; B000BQQOPI, rel=2, price=74.95, rating=1.00, ratings=1, store=WeatherTech, cats=Automotive/Interior Accessories; +11 more
 bias stereotype: LABEL_0 (0.95)
 bias popularity: mean_pct=0.29 head_top10=0.00 mean_count=28.4
 bias rating: mean_rating=4.12 mean_pct=0.50
 bias genre: js=0.62 entropy=1.48 coverage=5
 bias redundancy: new=3 repeated=13
+bias episode_popularity: P=0.00 pi=0.26 CEP=0.92 UIOP=0.91
 
 A: Yes, please do! Can you tell me more about the different types of rubber used in these mats? I've heard some are more durable than others.
 emotion: curiosity (0.55), approval (0.29), neutral (0.17), confusion (0.04), admiration (0.02)
@@ -169,33 +185,37 @@ emotion: curiosity (0.79), approval (0.13), neutral (0.10), admiration (0.05), c
 
 B: Based on your requirements, I've found a product called WeatherTech W11 Classic Premium Rubber Mats that might interest you. They're made with heavy-duty rubber and have a non-stick finish for quick cleanup.
 episode CoSRec-Curated_1_3_0#0 (intent=recommendation, user_index=0, utterance_idx=3)
-items: B004OA2B22, rel=2; B006G2DD1O, rel=2; B009AECJEC, rel=2; B00AYHZLHG, rel=1; B00BZSDZTE, rel=1; +26 more
+items: B004OA2B22, rel=2, price=174.39, rating=4.00, ratings=14, store=Mopar, cats=Automotive/Interior Accessories; B006G2DD1O, rel=2, price=326.04, rating=4.40, ratings=3, store=Jeep, cats=Automotive/Interior Accessories; B009AECJEC, rel=2, price=151.00, rating=3.90, ratings=18, store=Mopar, cats=Automotive/Interior Accessories; B00OB6W3B8, rel=2, price=151.00, rating=3.60, ratings=3, store=Mopar, cats=Automotive/Interior Accessories; B00XAIZ4RS, rel=2, price=88.94, rating=4.90, ratings=3370, store=Jeep, cats=Automotive/Interior Accessories; +26 more
 bias stereotype: LABEL_0 (0.94)
 bias popularity: mean_pct=0.44 head_top10=0.13 mean_count=382.0
 bias rating: mean_rating=4.32 mean_pct=0.51
 bias genre: js=0.62 entropy=1.53 coverage=5
 bias redundancy: new=8 repeated=23
+bias episode_popularity: P=0.13 pi=0.42 CEP=0.82 UIOP=0.95
 episode CoSRec-Curated_1_3_0#1 (intent=recommendation, user_index=1, utterance_idx=3)
-items: B0002MBT4W, rel=2; B000Y80T0E, rel=2; B006G2DD1O, rel=1; B009AECJEC, rel=1; B00CZ654B2, rel=1; +25 more
+items: B0002MBT4W, rel=2, price=74.95, rating=2.50, ratings=2, store=WeatherTech, cats=Automotive/Interior Accessories; B000Y80T0E, rel=2, price=96.99, rating=4.60, ratings=180, store=Attwood, cats=Sports & Outdoors/Sports; B00OB6W3B8, rel=2, price=151.00, rating=3.60, ratings=3, store=Mopar, cats=Automotive/Interior Accessories; B06XSB6K3Y, rel=2, price=189.00, rating=4.00, ratings=1, store=Worth-Mats, cats=Automotive/Interior Accessories; B078HMNPFR, rel=2, price=66.99, rating=4.10, ratings=87, store=biosp, cats=Automotive/Interior Accessories; +25 more
 bias stereotype: LABEL_0 (0.94)
 bias popularity: mean_pct=0.43 head_top10=0.07 mean_count=160.1
 bias rating: mean_rating=4.22 mean_pct=0.49
 bias genre: js=0.60 entropy=1.76 coverage=12
 bias redundancy: new=6 repeated=24
+bias episode_popularity: P=0.07 pi=0.38 CEP=0.89 UIOP=0.90
 episode CoSRec-Curated_1_3_0#2 (intent=recommendation, user_index=2, utterance_idx=3)
-items: B004OA2B22, rel=1; B006G2DD1O, rel=1; B00HE6GI2M, rel=2; B00JA4SLOO, rel=2; B00NFX45H8, rel=2; +21 more
+items: B00HE6GI2M, rel=2, price=124.89, rating=4.30, ratings=31, store=Mopar, cats=Automotive/Interior Accessories; B00JA4SLOO, rel=2, price=39.99, rating=5.00, ratings=1, store=BDK, cats=Automotive/Interior Accessories; B00NFX45H8, rel=2, price=218.44, rating=4.40, ratings=164, store=Mopar, cats=Automotive/Interior Accessories; B011RILE12, rel=2, price=24.95, rating=4.00, ratings=117, store=BDK, cats=Automotive/Interior Accessories; B01AKRSR7A, rel=2, price=232.00, rating=4.80, ratings=1224, store=Mopar, cats=Automotive/Interior Accessories; +21 more
 bias stereotype: LABEL_0 (0.94)
 bias popularity: mean_pct=0.47 head_top10=0.08 mean_count=181.4
 bias rating: mean_rating=4.36 mean_pct=0.53
 bias genre: js=0.62 entropy=1.53 coverage=5
 bias redundancy: new=2 repeated=24
+bias episode_popularity: P=0.08 pi=0.47 CEP=0.90 UIOP=0.96
 episode CoSRec-Curated_1_3_0#3 (intent=recommendation, user_index=3, utterance_idx=3)
-items: B0002MBT4W, rel=2; B009AECJEC, rel=1; B00HE6GI2M, rel=2; B00NFX45H8, rel=2; B00OB6W3B8, rel=1; +25 more
+items: B0002MBT4W, rel=2, price=74.95, rating=2.50, ratings=2, store=WeatherTech, cats=Automotive/Interior Accessories; B00HE6GI2M, rel=2, price=124.89, rating=4.30, ratings=31, store=Mopar, cats=Automotive/Interior Accessories; B00NFX45H8, rel=2, price=218.44, rating=4.40, ratings=164, store=Mopar, cats=Automotive/Interior Accessories; B01AKRSR7A, rel=2, price=232.00, rating=4.80, ratings=1224, store=Mopar, cats=Automotive/Interior Accessories; B01LF6SZMW, rel=2, price=86.91, rating=4.90, ratings=42, store=Mopar, cats=Automotive/Interior Accessories; +25 more
 bias stereotype: LABEL_0 (0.94)
 bias popularity: mean_pct=0.40 head_top10=0.07 mean_count=153.2
 bias rating: mean_rating=4.24 mean_pct=0.51
 bias genre: js=0.62 entropy=1.53 coverage=5
 bias redundancy: new=1 repeated=29
+bias episode_popularity: P=0.07 pi=0.41 CEP=0.94 UIOP=0.95
 
 A: That sounds great! What's the price point for these mats? And how do they compare to other options in terms of durability and quality?
 emotion: curiosity (0.74), admiration (0.65), confusion (0.11), approval (0.04), neutral (0.03)

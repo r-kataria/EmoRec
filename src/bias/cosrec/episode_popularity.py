@@ -87,6 +87,20 @@ def _mean(values: List[float]) -> Optional[float]:
     return float(sum(values) / len(values))
 
 
+def _mean_bins(bins_list: List[List[float]], bins: int) -> Optional[List[float]]:
+    if not bins_list or bins <= 0:
+        return None
+    filtered = [b for b in bins_list if b and len(b) == bins]
+    if not filtered:
+        return None
+    sums = [0.0] * bins
+    for b in filtered:
+        for i in range(bins):
+            sums[i] += float(b[i])
+    denom = float(len(filtered))
+    return [s / denom for s in sums]
+
+
 class EpisodePopularityBiasCoSRec:
     def __init__(
         self,
@@ -193,66 +207,81 @@ class EpisodePopularityBiasCoSRec:
         for _, eps in by_conv.items():
             if stop:
                 break
-            eps.sort(key=lambda e: (int(e.utterance_idx), int(e.user_index), str(e.topic_id)))
-            prev_bins: Optional[List[float]] = None
+            by_turn: Dict[int, List[CoSRecRecEpisode]] = defaultdict(list)
             for ep in eps:
-                metrics, bins = self._episode_metrics(ep)
-                cep = _js_similarity(prev_bins, bins) if prev_bins and bins else None
-                if bins:
-                    prev_bins = bins
+                by_turn[int(ep.system_turn_idx)].append(ep)
 
-                processed += 1
-                if not self.has(ep):
-                    rec = {
-                        "dataset": "cosrec",
-                        "partition": "curated",
-                        "topic_id": ep.topic_id,
-                        "base_intent_id": ep.base_intent_id,
-                        "user_index": ep.user_index,
-                        "conversation_id": ep.conversation_id,
-                        "utterance_idx": ep.utterance_idx,
-                        "intent_type": ep.intent_type,
-                        "created_at_unix": time.time(),
-                        "catalogue": "amazon_2023",
-                        "bins": self.bins,
-                        "episode_popularity": {
-                            "p_coverage": metrics["p_coverage"],
-                            "pi_rank_utility": metrics["pi_rank_utility"],
-                            "mean_percentile": metrics["mean_percentile"],
-                            "cep_similarity": cep,
-                            "uiop_similarity": metrics["uiop_similarity"],
-                            "uiop_category": metrics["uiop_category"],
-                            "num_items_total": metrics["num_items_total"],
-                            "num_items_mapped": metrics["num_items_mapped"],
-                        },
-                        "qrels": metrics["qrels"],
-                    }
-                    self._write(ep, rec)
-                    computed += 1
-                    if max_new is not None and computed >= max_new:
-                        stop = True
-                        break
+            prev_turn_bins: Optional[List[float]] = None
+            for turn_idx in sorted(by_turn.keys()):
+                group = by_turn[turn_idx]
+                group.sort(key=lambda e: (int(e.utterance_idx), int(e.user_index), str(e.topic_id)))
 
-                if every and (processed % every == 0):
-                    if progress_p is not None:
-                        progress_p.parent.mkdir(parents=True, exist_ok=True)
-                        with open(progress_p, "w", encoding="utf-8") as f:
-                            json.dump(
-                                {
-                                    "bias": "episode_popularity",
-                                    "dataset": "cosrec",
-                                    "partition": "curated",
-                                    "processed_episodes": processed,
-                                    "computed_new": computed,
-                                    "elapsed_s": time.time() - t0,
-                                },
-                                f,
-                                ensure_ascii=False,
-                            )
-                    print(
-                        f"[bias:episode_popularity:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
-                        flush=True,
-                    )
+                metrics_bins: List[Tuple[CoSRecRecEpisode, Dict[str, Any], List[float]]] = []
+                for ep in group:
+                    metrics, bins = self._episode_metrics(ep)
+                    metrics_bins.append((ep, metrics, bins))
+
+                for ep, metrics, bins in metrics_bins:
+                    cep = _js_similarity(prev_turn_bins, bins) if prev_turn_bins and bins else None
+
+                    processed += 1
+                    if not self.has(ep):
+                        rec = {
+                            "dataset": "cosrec",
+                            "partition": "curated",
+                            "topic_id": ep.topic_id,
+                            "base_intent_id": ep.base_intent_id,
+                            "user_index": ep.user_index,
+                            "conversation_id": ep.conversation_id,
+                            "utterance_idx": ep.utterance_idx,
+                            "intent_type": ep.intent_type,
+                            "created_at_unix": time.time(),
+                            "catalogue": "amazon_2023",
+                            "bins": self.bins,
+                            "episode_popularity": {
+                                "p_coverage": metrics["p_coverage"],
+                                "pi_rank_utility": metrics["pi_rank_utility"],
+                                "mean_percentile": metrics["mean_percentile"],
+                                "cep_similarity": cep,
+                                "uiop_similarity": metrics["uiop_similarity"],
+                                "uiop_category": metrics["uiop_category"],
+                                "num_items_total": metrics["num_items_total"],
+                                "num_items_mapped": metrics["num_items_mapped"],
+                            },
+                            "qrels": metrics["qrels"],
+                        }
+                        self._write(ep, rec)
+                        computed += 1
+                        if max_new is not None and computed >= max_new:
+                            stop = True
+                            break
+
+                    if every and (processed % every == 0):
+                        if progress_p is not None:
+                            progress_p.parent.mkdir(parents=True, exist_ok=True)
+                            with open(progress_p, "w", encoding="utf-8") as f:
+                                json.dump(
+                                    {
+                                        "bias": "episode_popularity",
+                                        "dataset": "cosrec",
+                                        "partition": "curated",
+                                        "processed_episodes": processed,
+                                        "computed_new": computed,
+                                        "elapsed_s": time.time() - t0,
+                                    },
+                                    f,
+                                    ensure_ascii=False,
+                                )
+                        print(
+                            f"[bias:episode_popularity:cosrec] processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",
+                            flush=True,
+                        )
+
+                if stop:
+                    break
+
+                group_bins = _mean_bins([b for _, _, b in metrics_bins], self.bins)
+                prev_turn_bins = group_bins
 
         print(
             f"[bias:episode_popularity:cosrec] done processed={processed} new={computed} elapsed_s={time.time() - t0:.1f}",

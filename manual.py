@@ -105,15 +105,17 @@ def _index_turns(cache: Optional[Dict[str, Any]], idx_key: str) -> Dict[int, Dic
 
 def _redial_emotion_path(cache_root: Path, split: str, conv_id: str) -> Optional[Path]:
     safe = redial_safe_id(conv_id)
-    candidates = [
-        cache_root / "emotion" / "go_emotions" / "redial" / "titles" / split / f"{safe}.json",
-        cache_root / "emotion" / "go_emotions" / "redial" / "raw" / split / f"{safe}.json",
-    ]
-    base = cache_root / "emotion" / "go_emotions" / "redial"
-    for top_dir in _sorted_top_dirs(base):
-        candidates.append(top_dir / "titles" / split / f"{safe}.json")
-        candidates.append(top_dir / "raw" / split / f"{safe}.json")
-    return _first_existing(candidates)
+    path = (
+        cache_root
+        / "emotion"
+        / "go_emotions"
+        / "redial"
+        / "top5"
+        / "titles"
+        / split
+        / f"{safe}.json"
+    )
+    return path if path.exists() else None
 
 
 def _redial_stereotype_path(cache_root: Path, split: str, conv_id: str) -> Optional[Path]:

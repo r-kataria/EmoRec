@@ -18,17 +18,10 @@ def safe_id(s: str) -> str:
 
 def get_speaker(msg: Dict[str, Any], idx: int) -> str:
     """
-    Best-effort speaker detection across common ReDial variants.
-    Falls back to alternating (Seeker, Recommender) by index.
+    ReDial messages alternate by index:
+      even index -> Seeker, odd index -> Recommender.
     """
-    for key in ("sender", "role", "from", "author", "authorType"):
-        v = msg.get(key)
-        if isinstance(v, str):
-            lv = v.lower()
-            if "seek" in lv or lv in {"user", "customer", "client", "seeker"}:
-                return "Seeker"
-            if "recom" in lv or lv in {"agent", "system", "bot", "assistant", "recommender"}:
-                return "Recommender"
+    _ = msg
     return "Seeker" if (idx % 2 == 0) else "Recommender"
 
 
