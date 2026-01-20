@@ -469,7 +469,6 @@ def _load_redial(cache_root: Path, splits: Iterable[str]) -> Tuple[pd.DataFrame,
         pop_dir = bias_base / "popularity" / "redial" / "ml-25m" / split
         epi_dir = bias_base / "episode_popularity" / "redial" / "ml-25m" / split
         genre_dir = bias_base / "genre" / "redial" / "ml-25m" / split
-        year_dir = bias_base / "year_decade" / "redial" / "ml-25m" / split
         red_dir = bias_base / "redundancy" / "redial" / "ml-25m" / split
 
         stereo_base = bias_base / "stereotype" / "redial"
@@ -485,7 +484,6 @@ def _load_redial(cache_root: Path, splits: Iterable[str]) -> Tuple[pd.DataFrame,
             pop = _load_json(pop_dir / f"{sid}.json")
             epi = _load_json(epi_dir / f"{sid}.json")
             gen = _load_json(genre_dir / f"{sid}.json")
-            year = _load_json(year_dir / f"{sid}.json")
             red = _load_json(red_dir / f"{sid}.json")
             stereo = _load_json(stereo_dir / f"{sid}.json") if stereo_dir else None
 
@@ -493,7 +491,6 @@ def _load_redial(cache_root: Path, splits: Iterable[str]) -> Tuple[pd.DataFrame,
             pop_turns = {t["msg_idx"]: t for t in (pop or {}).get("turns", [])}
             epi_turns = {t["msg_idx"]: t for t in (epi or {}).get("turns", [])}
             gen_turns = {t["msg_idx"]: t for t in (gen or {}).get("turns", [])}
-            year_turns = {t["msg_idx"]: t for t in (year or {}).get("turns", [])}
             red_turns = {t["msg_idx"]: t for t in (red or {}).get("turns", [])}
             stereo_turns = {t["msg_idx"]: t for t in (stereo or {}).get("turns", [])}
 
@@ -541,7 +538,6 @@ def _load_redial(cache_root: Path, splits: Iterable[str]) -> Tuple[pd.DataFrame,
                 uiop = epi_obj.get("uiop_similarity")
 
                 gen_obj = (gen_turns.get(i) or {}).get("genre_bias") or {}
-                year_obj = (year_turns.get(i) or {}).get("year_decade_bias") or {}
                 red_obj = red_turns.get(i) or {}
                 stereo_obj = (stereo_turns.get(i) or {}).get("bias") or []
                 stereo_label, stereo_score_0, stereo_score_1 = _stereotype_scores(stereo_obj)
@@ -562,9 +558,6 @@ def _load_redial(cache_root: Path, splits: Iterable[str]) -> Tuple[pd.DataFrame,
                     "pop_mean_pct": pop_obj.get("mean_percentile"),
                     "genre_js": gen_obj.get("js_divergence_vs_catalog"),
                     "genre_entropy": gen_obj.get("genres_entropy"),
-                    "year_decade_js": year_obj.get("decades_js_divergence_vs_catalog"),
-                    "year_decade_entropy": year_obj.get("decades_entropy"),
-                    "mean_year": year_obj.get("mean_year"),
                     "redundancy_new": len(red_obj.get("new_items") or []),
                     "redundancy_repeated": len(red_obj.get("repeated_items") or []),
                     "stereotype_label": stereo_label,
@@ -711,24 +704,10 @@ def analyze_stats(
     out_dir = Path(out_dir)
     _ensure_dir(out_dir)
     tables_dir = out_dir / "tables"
-    figs_dir = out_dir / "figures"
     _ensure_dir(tables_dir)
-    _ensure_dir(figs_dir)
-    final_dir = figs_dir / "final"
-    _ensure_dir(final_dir)
-    family_dirs = {
-        "emotion": final_dir / "emotion",
-        "popularity": final_dir / "popularity",
-        "episode_popularity": final_dir / "episode_popularity",
-        "genre": final_dir / "genre",
-        "year_decade": final_dir / "year_decade",
-        "redundancy": final_dir / "redundancy",
-        "exposure": final_dir / "exposure",
-        "stereotype": final_dir / "stereotype",
-        "summary": final_dir / "summary",
-    }
-    for p in family_dirs.values():
-        _ensure_dir(p)
+
+    graphs_dir = ROOT.parent / "graphs"
+    _ensure_dir(graphs_dir)
 
     redial_df, redial_exposure, redial_exposure_emotions, redial_exposure_items = _load_redial(cache_root, splits)
     cosrec_df, cosrec_exposure, cosrec_exposure_emotions, cosrec_exposure_items = _load_cosrec(cache_root)
@@ -749,9 +728,6 @@ def analyze_stats(
         "pop_mean_pct",
         "genre_js",
         "genre_entropy",
-        "year_decade_js",
-        "year_decade_entropy",
-        "mean_year",
         "redundancy_new",
         "redundancy_repeated",
     ]
@@ -798,34 +774,19 @@ def analyze_stats(
     redial_genre_stats = _aggregate_dist_stats(redial_genre_pairs)
     cosrec_genre_stats = _aggregate_dist_stats(cosrec_genre_pairs)
 
-    redial_decade_pairs = _collect_redial_turn_dists(
-        cache_root, redial_df, "year_decade", "year_decade_bias", "decades_dist"
-    )
-    redial_decade_stats = _aggregate_dist_stats(redial_decade_pairs)
-
-    redial_repeat_counts, redial_redundancy_progress = _collect_redial_redundancy_stats(cache_root, redial_df)
-    cosrec_repeat_counts, cosrec_redundancy_progress = _collect_cosrec_redundancy_stats(cache_root, cosrec_df)
-
     _write_summary(tables_dir / "summary_redial.txt", "ReDial", redial_df, redial_corr, redial_models, redial_exposure)
     _write_summary(tables_dir / "summary_cosrec.txt", "CoSRec", cosrec_df, cosrec_corr, cosrec_models, cosrec_exposure)
 
     build_all_plots(
         redial_df=redial_df,
         cosrec_df=cosrec_df,
-        redial_metrics=redial_metrics,
-        cosrec_metrics=cosrec_metrics,
         redial_genre_stats=redial_genre_stats,
         cosrec_genre_stats=cosrec_genre_stats,
-        redial_decade_stats=redial_decade_stats,
-        redial_repeat_counts=redial_repeat_counts,
-        cosrec_repeat_counts=cosrec_repeat_counts,
-        redial_redundancy_progress=redial_redundancy_progress,
-        cosrec_redundancy_progress=cosrec_redundancy_progress,
         redial_exposure_items=redial_exposure_items,
         cosrec_exposure_items=cosrec_exposure_items,
         redial_exposure_emotions=redial_exposure_emotions,
         cosrec_exposure_emotions=cosrec_exposure_emotions,
-        family_dirs=family_dirs,
+        out_dir=graphs_dir,
     )
 
 
@@ -842,4 +803,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

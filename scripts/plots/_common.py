@@ -45,9 +45,6 @@ def pretty_metric_name(metric: str) -> str:
         "uiop": "UIOP similarity",
         "genre_js": "Genre JS divergence",
         "genre_entropy": "Genre entropy",
-        "year_decade_js": "Year/decade JS divergence",
-        "year_decade_entropy": "Year/decade entropy",
-        "mean_year": "Mean release year",
         "redundancy_new": "Redundancy: new items",
         "redundancy_repeated": "Redundancy: repeated items",
     }
@@ -79,3 +76,4 @@ def bootstrap_mean_ci(values: np.ndarray, n_boot: int = 500, seed: int = 7) -> t
     rng = np.random.default_rng(seed)
     means = [float(np.mean(rng.choice(values, size=len(values), replace=True))) for _ in range(n_boot)]
     return float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))
+

@@ -27,7 +27,6 @@ def build_redial_biases(
         PopularityBias,
         RedundancyBias,
         StereotypeBiasReDial,
-        YearDecadeBias,
     )
 
     cache_root = Path(cache_root)
@@ -39,7 +38,6 @@ def build_redial_biases(
     red = RedundancyBias(cache_root=cache_root, movielens=ml)
     gen = GenreBias(cache_root=cache_root, movielens=ml)
     exp = ExposureConcentration(cache_root=cache_root, movielens=ml)
-    yd = YearDecadeBias(cache_root=cache_root, movielens=ml)
     stereo = StereotypeBiasReDial(
         cache_root=cache_root,
         device=parse_device(device),
@@ -56,7 +54,6 @@ def build_redial_biases(
                 epi._base_dir(),
                 red._base_dir(),
                 gen._base_dir(),
-                yd._base_dir(),
                 stereo._base_dir(),
             ]:
                 split_dir = base_dir / split
@@ -66,7 +63,6 @@ def build_redial_biases(
         epi.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_episode_popularity_{split}.json", every=every)
         red.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_redundancy_{split}.json", every=every)
         gen.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_genre_{split}.json", every=every)
-        yd.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_year_decade_{split}.json", every=every)
         stereo.build(ds, split=split, max_new=max_new, progress_path=cache_root / f"bias_stereotype_{split}.json", every=every)
         exp.build(ds, split=split, force=force, progress_path=cache_root / f"bias_exposure_{split}.json", every=every)
 

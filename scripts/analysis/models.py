@@ -14,7 +14,14 @@ def model_tables(df: pd.DataFrame, metrics: List[str]) -> pd.DataFrame:
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
     except Exception as e:
-        raise RuntimeError("Missing scikit-learn; install it to run modeling: pip install scikit-learn") from e
+        import sys
+
+        print(
+            "[models] scikit-learn not installed; skipping predictive models. "
+            "Install: pip install scikit-learn",
+            file=sys.stderr,
+        )
+        return pd.DataFrame([])
 
     emo_cols = [c for c in df.columns if c.startswith("emo_")]
     if not emo_cols:
@@ -81,4 +88,3 @@ def model_tables(df: pd.DataFrame, metrics: List[str]) -> pd.DataFrame:
             )
 
     return pd.DataFrame(rows)
-
