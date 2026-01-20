@@ -1,0 +1,37 @@
+Dataset: CoSRec
+Episodes: 225
+Stereotype label rates (%): LABEL_0=91.6, LABEL_1=8.4
+p01 nonzero rate: 0.156
+p05 nonzero rate: 0.596
+p10 nonzero rate: 0.809
+pi nonzero rate: 1.000
+pop_mean_pct nonzero rate: 1.000
+cep nonzero rate: 0.000
+uiop nonzero rate: 0.000
+Exposure: gini=0.3966884987906816, hhi=0.000402735390900748
+
+Top correlations (Spearman p<0.05):
+  p01 vs surprise: r=0.315 (p=1.43e-06, n=225)
+  redundancy_repeated vs desire: r=-0.294 (p=7.37e-06, n=225)
+  pop_mean_pct vs neutral: r=0.289 (p=1.05e-05, n=225)
+  pi vs neutral: r=0.287 (p=1.25e-05, n=225)
+  redundancy_new vs gratitude: r=-0.255 (p=0.000109, n=225)
+  p05 vs neutral: r=0.235 (p=0.000383, n=225)
+  p05 vs desire: r=-0.228 (p=0.000579, n=225)
+  p10 vs neutral: r=0.226 (p=0.000636, n=225)
+  redundancy_new vs neutral: r=0.214 (p=0.00127, n=225)
+  pop_mean_pct vs gratitude: r=0.205 (p=0.00199, n=225)
+
+Model summary (5-fold CV):
+  p01: R^2=-1.385, MAE=0.014, n=225
+  p05: R^2=0.040, MAE=0.039, n=225
+  p10: R^2=0.153, MAE=0.060, n=225
+  pi: R^2=0.175, MAE=0.101, n=225
+  pop_mean_pct: R^2=0.178, MAE=0.093, n=225
+  rating_mean: R^2=-0.029, MAE=0.151, n=225
+  rating_mean_pct: R^2=-0.025, MAE=0.087, n=225
+  genre_js: R^2=0.065, MAE=0.045, n=225
+  genre_entropy: R^2=0.054, MAE=0.417, n=225
+  redundancy_new: R^2=0.044, MAE=13.323, n=225
+  redundancy_repeated: R^2=-0.170, MAE=13.360, n=225
+  stereotype_label: AUC=0.971, Acc=0.938, n=225

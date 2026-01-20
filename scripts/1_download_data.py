@@ -139,7 +139,7 @@ def download_all():
     download_cosrec()
     download_movielens()
     download_amazon_2023()
-    download_msmarco()
+    # download_msmarco()
     echo("All data downloaded!!")
 
 if __name__ == "__main__":
